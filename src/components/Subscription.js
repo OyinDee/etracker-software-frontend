@@ -46,28 +46,10 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
                     email: userEmail,
                     amount: 10000 * 100,
                     ref: reference,
-                    callback: async (response) => {
+                    callback: (response) => {
                         if (response.reference === reference) {
-                            try {
-                                // Call backend to verify payment
-                                const verifyRes = await axios.get(
-                                    `${API_URL}/payment/verify/${reference}`
-                                );
-                                if (verifyRes.data.success) {
-                                    toast.success(
-                                        'Subscription successful and verified!'
-                                    );
-                                    onSuccess();
-                                } else {
-                                    toast.error(
-                                        'Payment could not be verified. Please contact support.'
-                                    );
-                                }
-                            } catch (err) {
-                                toast.error(
-                                    'Error verifying payment. Please try again.'
-                                );
-                            }
+                            toast.success('Subscription successful!');
+                            onSuccess();
                         } else {
                             toast.error(
                                 'Payment verification failed. Please contact support.'
