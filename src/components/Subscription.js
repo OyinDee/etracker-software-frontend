@@ -46,10 +46,28 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
                     email: userEmail,
                     amount: 10000 * 100,
                     ref: reference,
-                    callback: (response) => {
+                    callback: async (response) => {
                         if (response.reference === reference) {
-                            toast.success('Subscription successful!');
-                            onSuccess();
+                            try {
+                                // Call backend to verify payment
+                                const verifyRes = await axios.get(
+                                    `${API_URL}/payment/verify/${reference}`
+                                );
+                                if (verifyRes.data.success) {
+                                    toast.success(
+                                        'Subscription successful and verified!'
+                                    );
+                                    onSuccess();
+                                } else {
+                                    toast.error(
+                                        'Payment could not be verified. Please contact support.'
+                                    );
+                                }
+                            } catch (err) {
+                                toast.error(
+                                    'Error verifying payment. Please try again.'
+                                );
+                            }
                         } else {
                             toast.error(
                                 'Payment verification failed. Please contact support.'
@@ -63,7 +81,6 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
 
                 const handler = window.PaystackPop.setup(paystackOptions);
                 handler.openIframe();
-
             } else {
                 toast.error('Payment processor not ready. Please try again.');
             }
@@ -153,7 +170,8 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
             )}
 
             <p className="mt-4 text-sm text-gray-500">
-                You will be redirected to Paystack for secure payment processing.
+                You will be redirected to Paystack for secure payment
+                processing.
             </p>
         </div>
     );

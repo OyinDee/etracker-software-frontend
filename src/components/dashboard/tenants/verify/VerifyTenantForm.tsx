@@ -99,18 +99,33 @@ export default function VerifyForm() {
                     email: userEmail,
                     amount: 1000 * 100,
                     ref: reference,
-                    callback: (response: any) => {
+                    callback: async (response: any) => {
                         if (response.reference !== reference) {
                             toast.error(
                                 'Payment verification failed. Please contact support.'
                             );
-                            // alert('Payment verification failed. Please contact support.');
                             return;
                         }
-                        toast.success(
-                            'Payment successful! Tenant verification process will begin shortly.'
-                        );
-                        // alert('Payment successful! Verification process will begin shortly.');
+                        try {
+                            // Call backend to verify payment
+                            const verifyRes = await axios.get(
+                                `${API_URL}/payment/verify/${reference}`
+                            );
+                            if (verifyRes.data.success) {
+                                toast.success(
+                                    'Payment successful and verified! Tenant verification process will begin shortly.'
+                                );
+                                // Optionally, update UI/state here
+                            } else {
+                                toast.error(
+                                    'Payment could not be verified. Please contact support.'
+                                );
+                            }
+                        } catch (err) {
+                            toast.error(
+                                'Error verifying payment. Please try again.'
+                            );
+                        }
                     },
                     onClose: () => {
                         alert('Payment window closed');
