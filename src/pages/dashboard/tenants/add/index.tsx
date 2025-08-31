@@ -84,7 +84,7 @@ export default function AddTenant() {
         const invitedByName: string = `${firstname} ${lastname}`;
         const userId = userProfile?.id || ''; // Assuming the user ID is stored in userProfile
 
-        const registrationLink = `https://etracker-software-frontend.vercel.app/auth/invite-tenant?propertyId=${propId}&invitedBy=${encodeURIComponent(
+        const registrationLink = `https://etracker-software-frontend-five.vercel.app/auth/invite-tenant?propertyId=${propId}&invitedBy=${encodeURIComponent(
             invitedByName
         )}&userId=${userId}`; // Include userId in the link
 
@@ -296,7 +296,7 @@ export default function AddTenant() {
         // @ts-ignore
         const propertyId = propId;
         console.log(propertyId, 'propertyId');
-        const link = `https://etracker-software-frontend.vercel.app/auth/invite-tenant?propertyId=${propertyId}&invitedBy=${encodeURIComponent(
+        const link = `https://etracker-software-frontend-five.vercel.app/auth/invite-tenant?propertyId=${propertyId}&invitedBy=${encodeURIComponent(
             invitedByName
         )}`;
         navigator.clipboard

@@ -230,7 +230,9 @@ function Signin() {
             })
             .catch((error: any) => {
                 setIsNavigating(false);
-                toast.error('Something went wrong please try again');
+                toast.error(
+                    error?.message || 'Something went wrong please try again'
+                );
             });
     };
 
