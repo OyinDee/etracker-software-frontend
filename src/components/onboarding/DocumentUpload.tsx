@@ -109,34 +109,36 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
         setHandleFileChangeCalled(true);
     };
 
-    const validateRequiredFiles = () => {
-        // Filters all fileTypes associated to an account type
-        const filteredFileTypes: any = fileTypes?.data?.data.filter(
+    const getRequiredDocuments = useMemo(() => {
+        if (!fileTypes?.data?.data) return [];
+        return fileTypes.data.data.filter(
             (fileType) =>
                 fileType.requiredFor.includes(Number(states?.activeAccount)) &&
                 fileType.typeID
         );
-        const docTypeId1 = filteredFileTypes.map((item: any) => item);
-        const docTypeId2 = files.map((item: CustomFile) => item);
+    }, [fileTypes, states?.activeAccount]);
 
-        const missingTypeIds = docTypeId1.find(
-            (type: any) =>
-                !docTypeId2.some(
-                    (item: any) => Number(item?.id) === Number(type.typeID)
-                )
+    const validateRequiredFiles = () => {
+        const requiredDocs = getRequiredDocuments;
+        const missingDocs = requiredDocs.filter(
+            (doc) =>
+                !files.some((file) => Number(file?.id) === Number(doc.typeID))
         );
-        console.log('isTypeIdFound>>>', missingTypeIds);
-        //Returns the name of the not selected file
-        return missingTypeIds ? missingTypeIds.name : null;
+        return missingDocs;
     };
 
     const onHandleUpload = () => {
-        const isError = validateRequiredFiles();
-        if (isError) {
-            toast.error(isError + ' required');
-            setShowMessage(isError + ' required');
+        const missingDocs = validateRequiredFiles();
+        if (missingDocs.length > 0) {
+            const missingDocNames = missingDocs
+                .map((doc) => doc.name)
+                .join(', ');
+            const errorMessage = `Please upload the following required documents: ${missingDocNames}`;
+            toast.error(errorMessage);
+            setShowMessage(errorMessage);
             return;
         }
+
         setShowMessage('');
         const formData = new FormData();
         if (!typeIDs?.length) {
@@ -235,6 +237,63 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
 
     return (
         <section className="h-screen py-18 mt-20">
+            <div className="mb-10 p-4 bg-gray-50 rounded-lg">
+                <h2 className="font-semibold text-lg mb-4">
+                    Required Documents
+                </h2>
+                <ul className="space-y-2">
+                    {getRequiredDocuments.map((doc) => {
+                        const isUploaded = files.some(
+                            (file) => Number(file?.id) === Number(doc.typeID)
+                        );
+                        return (
+                            <li key={doc.id} className="flex items-center">
+                                <span
+                                    className={`w-5 h-5 mr-2 flex items-center justify-center rounded-full ${
+                                        isUploaded
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-gray-200'
+                                    }`}
+                                >
+                                    {isUploaded
+                                        ? '✓'
+                                        : getRequiredDocuments.indexOf(doc) + 1}
+                                </span>
+                                <span
+                                    className={
+                                        isUploaded
+                                            ? 'text-gray-500 line-through'
+                                            : ''
+                                    }
+                                >
+                                    {doc.name}{' '}
+                                    {doc.askForDocID === 1
+                                        ? '(with ID number)'
+                                        : ''}
+                                </span>
+                                {isUploaded && (
+                                    <span className="ml-2 text-sm text-green-600">
+                                        (Uploaded)
+                                    </span>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            </div>
+
+            {!!showMessage && (
+                <div className="rounded-md py-4 px-6 bg-red-100 border border-red-200 text-red-700 mb-6 flex justify-between items-center">
+                    <p className="flex-1">{showMessage}</p>
+                    <button
+                        onClick={() => setShowMessage('')}
+                        className="text-red-700 hover:text-red-900"
+                        aria-label="Close error message"
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
             <ul className="list-disc mb-10 ml-5">
                 <h2 className="font-semibold -ml-5">
                     You are required to submit these documents
@@ -246,16 +305,6 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                 <li>Your utility bill</li>
             </ul>
             <section className="lg:w-4/6 mr-auto">
-                {!!showMessage && (
-                    <div className="rounded-md py-4 px-6 bg-[#FFB6C1] -300 mt-5 flex justify-between">
-                        <p className="flex-1">
-                            {showMessage} document is required
-                        </p>
-                        <span role="button" onClick={() => setShowMessage('')}>
-                            &#x2715;
-                        </span>
-                    </div>
-                )}
                 <div className="flex gap-5 items-start">
                     <div className="flex-1">
                         <Select

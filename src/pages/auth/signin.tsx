@@ -190,6 +190,19 @@ function Signin() {
                             states?.setActiveAccount(
                                 data?.data?.user?.currentKyc?.accountType
                             );
+                    } else if (
+                        data?.data?.user?.accountTypes?.length > 0 &&
+                        !data?.data?.user?.currentKyc
+                    ) {
+                        // If user has account types but no current KYC, set the first account type as active
+                        const firstAccountType =
+                            data?.data?.user?.accountTypes[0];
+                        states?.setActiveAccount &&
+                            states?.setActiveAccount(firstAccountType);
+                        console.log(
+                            'Set active account to first available:',
+                            firstAccountType
+                        );
                     }
 
                     if (tenantId && propertyId) {

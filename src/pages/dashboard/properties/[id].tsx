@@ -3,7 +3,7 @@ import { BiArrowBack } from 'react-icons/bi';
 import useAccountType from 'hooks/useAccountType';
 import { useAppStore } from 'hooks/useAppStore';
 import Dashboard from '..';
-import statesAndLgas from "../../../libs/nigerian-states.json";
+import statesAndLgas from '../../../libs/nigerian-states.json';
 import Image from 'next/image';
 import { FC, ReactFragment, ReactNode, useEffect, useState } from 'react';
 import BackButton from 'components/base/BackButton';
@@ -22,6 +22,35 @@ import Select from 'components/base/form/Select';
 import nigeriaStates from 'nigeria-states-lgas';
 import { set, useForm } from 'react-hook-form';
 import TextArea from 'components/base/form/TextArea';
+import * as yup from 'yup';
+import { yupResolver } from '@hookform/resolvers/yup';
+
+const propertyUpdateSchema = yup.object({
+    name: yup.string().required('Property name is required'),
+    price: yup
+        .number()
+        .positive('Price must be positive')
+        .required('Price is required'),
+    number_of_bedrooms: yup
+        .number()
+        .positive('Number of bedrooms must be positive')
+        .required('Number of bedrooms is required'),
+    number_of_bath: yup
+        .number()
+        .positive('Number of bathrooms must be positive')
+        .required('Number of bathrooms is required'),
+    address: yup.string().required('Address is required'),
+    status: yup
+        .string()
+        .oneOf(['RENT', 'BUY', 'SELL'], 'Invalid status')
+        .required('Status is required'),
+    description: yup.string().required('Description is required'),
+    city: yup.string().required('City is required'),
+    state: yup.string().required('State is required'),
+    apartmentType: yup.string().required('Apartment type is required'),
+    year_built: yup.string().required('Year built is required'),
+    is_active: yup.boolean().required('Property status is required'),
+});
 
 interface DetailsProps {
     label?: string;
@@ -74,7 +103,31 @@ export default function PropertyDetails() {
     const [isLoading, setIsLoading] = useState(false);
     const property = getProperty?.data;
     const [editable, setEditable] = useState(false);
-    const { register, handleSubmit, watch } = useForm();
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors },
+        reset,
+    } = useForm({
+        resolver: yupResolver(propertyUpdateSchema),
+        defaultValues: {
+            name: '',
+            price: 0,
+            number_of_bedrooms: 0,
+            number_of_bath: 0,
+            address: '',
+            status: 'RENT' as 'RENT' | 'BUY' | 'SELL',
+            description: '',
+            city: '',
+            state: '',
+            apartmentType: '',
+            year_built: '',
+            is_active: true,
+        },
+    });
+
     const [formData, setFormData] = useState({
         name: property?.name,
         price: property?.price,
@@ -92,29 +145,47 @@ export default function PropertyDetails() {
         is_active: property?.is_active,
     });
 
-    const [selectedState, setSelectedState] = useState("");
+    const [selectedState, setSelectedState] = useState('');
     const [lgas, setLgas] = useState<string[]>([]);
-
 
     const handleEditable = (state: boolean) => {
         setEditable(state);
 
-        setFormData({
-            name: property?.name,
-            price: property?.price,
-            number_of_bedrooms: property?.number_of_bedrooms,
-            number_of_bath: property?.number_of_bath,
-            address: property?.address,
-            status: property?.status as 'RENT' | 'BUY' | 'SELL' | undefined,
-            description: property?.description,
-            location: {
-                city: property?.location?.city,
-                state: property?.location?.state,
-            },
-            year_built: property?.year_built,
-            apartmentType: property?.apartmentType,
-            is_active: property?.is_active,
-        });
+        if (state && property) {
+            // Initialize form with property data when editing
+            setValue('name', property.name || '');
+            setValue('price', property.price || 0);
+            setValue('number_of_bedrooms', property.number_of_bedrooms || 0);
+            setValue('number_of_bath', property.number_of_bath || 0);
+            setValue('address', property.address || '');
+            setValue(
+                'status',
+                (property.status as 'RENT' | 'BUY' | 'SELL') || 'RENT'
+            );
+            setValue('description', property.description || '');
+            setValue('city', property.location?.city || '');
+            setValue('state', property.location?.state || '');
+            setValue('apartmentType', property.apartmentType || '');
+            setValue('year_built', property.year_built || '');
+            setValue('is_active', property.is_active ?? true);
+
+            setFormData({
+                name: property?.name,
+                price: property?.price,
+                number_of_bedrooms: property?.number_of_bedrooms,
+                number_of_bath: property?.number_of_bath,
+                address: property?.address,
+                status: property?.status as 'RENT' | 'BUY' | 'SELL' | undefined,
+                description: property?.description,
+                location: {
+                    city: property?.location?.city,
+                    state: property?.location?.state,
+                },
+                year_built: property?.year_built,
+                apartmentType: property?.apartmentType,
+                is_active: property?.is_active,
+            });
+        }
     };
 
     // const NigeriaState = formData?.location?.state;
@@ -184,72 +255,54 @@ export default function PropertyDetails() {
         }
     };
 
-    const editProperty = async () => {
+    const editProperty = async (data: any) => {
         if (!id) {
             console.error('Property ID is undefined.');
+            toast.error('Property ID is missing.');
             return;
         }
 
         try {
             setIsLoading(true);
 
-            if (
-                !formData.location ||
-                !formData.location.city ||
-                !formData.location.state
-            ) {
-                toast.error('City and state of property are required.');
-                return;
-            }
-
             const partialProperty = {
                 id: id,
-                name: formData.name,
-                price: formData.price,
-                number_of_bedrooms: formData.number_of_bedrooms,
-                number_of_bath: formData.number_of_bath,
-                address: formData.address,
-                status: formData.status,
-                description: formData.description,
-
-                city: formData.location.city,
-
-                state: formData.location.state,
-
-                year_built: formData.year_built,
-                apartmentType: formData.apartmentType,
-                is_active: formData.is_active,
+                name: data.name,
+                price: Number(data.price),
+                number_of_bedrooms: Number(data.number_of_bedrooms),
+                number_of_bath: Number(data.number_of_bath),
+                address: data.address,
+                status: data.status,
+                description: data.description,
+                city: data.city,
+                state: data.state,
+                year_built: data.year_built,
+                apartmentType: data.apartmentType,
+                is_active: data.is_active,
             };
 
-            //@ts-ignore
             await PropertyService.updatePropertyById(partialProperty);
 
-            // set state
-            setFormData({
-                ...formData,
-                location: {
-                    city: formData.location.city,
-                    state: formData.location.state,
-                },
-            });
-            // console.log(formData, 'formData');
-            // console.log(update, 'update');
             toast.success('Property updated successfully');
             setIsLoading(false);
             setEditable(false);
-            // reload page
-            // return;
             router.reload();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating property:', error);
             setIsLoading(false);
-            toast.error('Error updating property. Please try again later.');
+
+            // Better error handling
+            const errorMessage =
+                error?.response?.data?.message ||
+                error?.message ||
+                'Error updating property. Please try again later.';
+            toast.error(errorMessage);
         }
     };
 
-    const handleCityChange = (event: { target: { value: any; }; }) => {
+    const handleCityChange = (event: { target: { value: any } }) => {
         const city = event.target.value;
-        console.log(city, 'city');
+        setValue('city', city);
         setFormData({
             ...formData,
             location: {
@@ -259,18 +312,53 @@ export default function PropertyDetails() {
         });
     };
 
-    const handleStateChange = (event: { target: { value: any; }; }) => {
+    const handleStateChange = (event: { target: { value: any } }) => {
         const state = event.target.value;
         setSelectedState(state);
+        setValue('state', state);
+        setValue('city', ''); // Reset city when state changes
         setFormData({
             ...formData,
             location: {
                 ...formData.location,
                 state: state,
+                city: '', // Reset city when state changes
             },
         });
-        setLgas(statesAndLgas[state as keyof typeof statesAndLgas] || []); 
+        setLgas(statesAndLgas[state as keyof typeof statesAndLgas] || []);
     };
+
+    // Initialize form when property data is loaded
+    useEffect(() => {
+        if (property && !editable) {
+            setFormData({
+                name: property?.name,
+                price: property?.price,
+                number_of_bedrooms: property?.number_of_bedrooms,
+                number_of_bath: property?.number_of_bath,
+                address: property?.address,
+                status: property?.status as 'RENT' | 'BUY' | 'SELL' | undefined,
+                description: property?.description,
+                location: {
+                    city: property?.location?.city,
+                    state: property?.location?.state,
+                },
+                year_built: property?.year_built,
+                apartmentType: property?.apartmentType,
+                is_active: property?.is_active,
+            });
+
+            // Set LGAs for the current state
+            if (property?.location?.state) {
+                setSelectedState(property.location.state);
+                setLgas(
+                    statesAndLgas[
+                        property.location.state as keyof typeof statesAndLgas
+                    ] || []
+                );
+            }
+        }
+    }, [property, editable]);
 
     console.log(property, 'property');
 
@@ -438,14 +526,10 @@ export default function PropertyDetails() {
                                         editable ? (
                                             <Input
                                                 type="text"
-                                                value={property?.name}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'name',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register('name')}
+                                                error={errors.name}
                                                 inputClassName="bg-white"
+                                                placeholder="Enter property name"
                                             />
                                         ) : (
                                             property?.name
@@ -458,14 +542,12 @@ export default function PropertyDetails() {
                                         editable ? (
                                             <Input
                                                 type="text"
-                                                value={property?.year_built}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'year_built',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register(
+                                                    'year_built'
+                                                )}
+                                                error={errors.year_built}
                                                 inputClassName="bg-white"
+                                                placeholder="Enter year built"
                                             />
                                         ) : (
                                             property?.year_built
@@ -479,23 +561,14 @@ export default function PropertyDetails() {
                                     content={
                                         editable ? (
                                             <Select
-                                                value={
-                                                    formData.is_active
-                                                        ? 'Active'
-                                                        : 'Off Market'
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'is_active',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register('is_active')}
+                                                error={errors.is_active}
                                                 selectDivClassName="bg-white"
                                             >
-                                                <option value="Active">
+                                                <option value="true">
                                                     Active
                                                 </option>
-                                                <option value="Off Market">
+                                                <option value="false">
                                                     Off Market
                                                 </option>
                                             </Select>
@@ -511,15 +584,11 @@ export default function PropertyDetails() {
                                     content={
                                         editable ? (
                                             <Input
-                                                type="text"
-                                                value={formData.price}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'price',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                type="number"
+                                                register={register('price')}
+                                                error={errors.price}
                                                 inputClassName="bg-white"
+                                                placeholder="Enter price"
                                             />
                                         ) : (
                                             'N' + property?.price.toFixed(2)
@@ -539,14 +608,10 @@ export default function PropertyDetails() {
                                         editable ? (
                                             <Input
                                                 type="text"
-                                                value={formData.address}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'address',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register('address')}
+                                                error={errors.address}
                                                 inputClassName="bg-white"
+                                                placeholder="Enter property address"
                                             />
                                         ) : (
                                             property?.address
@@ -558,15 +623,17 @@ export default function PropertyDetails() {
                                     content={
                                         editable ? (
                                             <Select
-                                                // label="City"
                                                 placeholder="Select a City"
                                                 selectDivClassName="bg-white"
                                                 required
-                                                value={formData?.location?.city}
-                                                onChange={(e) => handleCityChange(e)}
+                                                register={register('city')}
+                                                error={errors.city}
+                                                onChange={(e) =>
+                                                    handleCityChange(e)
+                                                }
                                             >
                                                 <option disabled value="">
-                                                    {formData?.location?.city}
+                                                    Select a City
                                                 </option>
                                                 {lgas.map((lga, i) => (
                                                     <option key={i} value={lga}>
@@ -584,24 +651,28 @@ export default function PropertyDetails() {
                                 <DetailsCard
                                     label="State"
                                     content={
-                                        editable ? ( 
+                                        editable ? (
                                             <Select
-                                                // label="State"
                                                 placeholder="Select a State"
                                                 selectDivClassName="bg-white"
                                                 required
-                                                register={{ ...register("state") }}
-                                                // error={errors.state}
+                                                register={register('state')}
+                                                error={errors.state}
                                                 onChange={handleStateChange}
                                             >
                                                 <option disabled value="">
-                                                    {formData?.location?.state || "Select a State"}
+                                                    Select a State
                                                 </option>
-                                                {Object.keys(statesAndLgas).map((state, i) => (
-                                                    <option key={i} value={state}>
-                                                        {state}
-                                                    </option>
-                                                ))}
+                                                {Object.keys(statesAndLgas).map(
+                                                    (state, i) => (
+                                                        <option
+                                                            key={i}
+                                                            value={state}
+                                                        >
+                                                            {state}
+                                                        </option>
+                                                    )
+                                                )}
                                             </Select>
                                         ) : (
                                             property?.location?.state
@@ -621,16 +692,14 @@ export default function PropertyDetails() {
                                             <Input
                                                 type="number"
                                                 min={1}
-                                                value={
-                                                    formData?.number_of_bedrooms
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'number_of_bedrooms',
-                                                        e.target.value
-                                                    )
+                                                register={register(
+                                                    'number_of_bedrooms'
+                                                )}
+                                                error={
+                                                    errors.number_of_bedrooms
                                                 }
                                                 inputClassName="bg-white"
+                                                placeholder="Enter number of bedrooms"
                                             />
                                         ) : (
                                             property?.number_of_bedrooms
@@ -708,16 +777,12 @@ export default function PropertyDetails() {
                                     content={
                                         editable ? (
                                             <TextArea
-                                                //@ts-ignore
-                                                value={formData?.description}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'description',
-                                                        //@ts-ignore
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register(
+                                                    'description'
+                                                )}
+                                                error={errors.description}
                                                 TextAreaClassName="bg-white min-h-[150px]"
+                                                placeholder="Enter property description"
                                             />
                                         ) : (
                                             property?.description
@@ -742,7 +807,7 @@ export default function PropertyDetails() {
                                 className="w-full py-4"
                                 type="submit"
                                 isLoading={isLoading}
-                                onClick={() => editProperty()}
+                                onClick={handleSubmit(editProperty)}
                             >
                                 Confirm
                             </Button>

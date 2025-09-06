@@ -90,9 +90,15 @@ const LandlordDash: FC = () => {
     const propertiesLoading = getMyPropertiesLoading;
 
     // Debug logging
-    console.log('getMyProperties:', getMyProperties);
-    console.log('getMyPropertiesLoading:', getMyPropertiesLoading);
-    console.log('getMyPropertiesError:', getMyPropertiesError);
+    console.log('LandlordDash Debug:', {
+        acctType,
+        getMyProperties,
+        getMyPropertiesLoading,
+        getMyPropertiesError,
+        properties: properties.length,
+        activeAccount: states?.activeAccount,
+        user: states?.user?.id,
+    });
 
     useEffect(() => {
         if (!getMyProperties?.data?.data) return;
