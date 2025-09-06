@@ -14,13 +14,26 @@ export async function getAllTenants() {
 }
 
 export async function getLandlordTenant(landordId) {
-    return request(`${API_URL}/tenants/landlord-properties/${landordId}`, {
-        method: 'get',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
-        },
-    });
+    try {
+        const response = await request(
+            `${API_URL}/tenants/landlord-properties/${landordId}`,
+            {
+                method: 'get',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: USER_TOKEN,
+                },
+            }
+        );
+        return response || [];
+    } catch (error) {
+        // Handle 404 as an empty array (no tenants found)
+        if (error.response?.status === 404) {
+            return [];
+        }
+        // Re-throw other errors to be handled by the calling component
+        throw error;
+    }
 }
 
 export async function getDefaultTenant(landordId) {

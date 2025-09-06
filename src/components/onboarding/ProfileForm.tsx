@@ -160,7 +160,40 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ page }) => {
         }
     };
 
+    const [selectedState, setSelectedState] = useState('');
+    const [availableLgas, setAvailableLgas] = useState<string[]>([]);
+    const [lgasLoading, setLgasLoading] = useState(false);
     const NigeriaState = watch('state');
+
+    // Update LGAs when state changes or component mounts with user state
+    useEffect(() => {
+        const loadLgas = async () => {
+            if (NigeriaState) {
+                setLgasLoading(true);
+                try {
+                    const lgas = nigeriaStates.lgas(NigeriaState) || [];
+                    setAvailableLgas(lgas);
+
+                    // If the current area is not in the new state's LGAs, clear it
+                    const currentArea = watch('area');
+                    if (currentArea && !lgas.includes(currentArea)) {
+                        setValue('area', '');
+                    }
+                } catch (error) {
+                    console.error('Error loading LGAs:', error);
+                    setAvailableLgas([]);
+                } finally {
+                    setLgasLoading(false);
+                }
+            }
+        };
+
+        const timer = setTimeout(() => {
+            loadLgas();
+        }, 0);
+
+        return () => clearTimeout(timer);
+    }, [NigeriaState, setValue, watch]);
 
     const onSubmit = async (data: any) => {
         data.dob = new Date(data.dob).toUTCString();
@@ -243,6 +276,12 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ page }) => {
                 setValue(key as keyof typeof defaultValues, value);
             }
         });
+
+        // Initialize LGAs if user has a state
+        if (states?.user?.state) {
+            setSelectedState(states.user.state);
+            // LGAs will be loaded by the main effect when NigeriaState updates
+        }
     }, [states?.user, setValue]);
 
     useEffect(() => {
@@ -432,6 +471,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ page }) => {
                 register={{ ...register('state') }}
                 error={errors.state}
                 selectDivClassName="bg-white"
+                onChange={(e) => {
+                    const newState = e.target.value;
+                    setValue('state', newState);
+                    setValue('area', ''); // Clear LGA when state changes
+                    setSelectedState(newState);
+                    const lgas = nigeriaStates.lgas(newState) || [];
+                    setAvailableLgas(lgas);
+                }}
             >
                 <option disabled value="">
                     State
@@ -450,14 +497,14 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ page }) => {
                 error={errors.area}
                 selectDivClassName="bg-white"
             >
-                {NigeriaState &&
-                    nigeriaStates
-                        .lgas(NigeriaState)
-                        ?.map((lga: string, i: number) => (
-                            <option key={i} value={lga}>
-                                {lga}
-                            </option>
-                        ))}
+                <option disabled value="">
+                    Select LGA
+                </option>
+                {availableLgas.map((lga: string, i: number) => (
+                    <option key={i} value={lga}>
+                        {lga}
+                    </option>
+                ))}
             </Select>
             <Input
                 label="Full Address"

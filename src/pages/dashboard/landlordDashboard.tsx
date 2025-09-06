@@ -74,7 +74,9 @@ const LandlordDash: FC = () => {
     const { acctType } = useAccountType();
     const router = useRouter();
     const states = useAppStore();
-    const [tenants, setTenants] = useState([]);
+    const [tenants, setTenants] = useState<any[]>([]);
+    const [isLoadingTenants, setIsLoadingTenants] = useState(false);
+    const [tenantError, setTenantError] = useState<string | null>(null);
     const [occupiedCount, setOccupiedCount] = useState(0);
     const [vacantCount, setVacantCount] = useState(0);
 
@@ -122,6 +124,30 @@ const LandlordDash: FC = () => {
         setVacantCount(vacant);
     }, [getMyProperties?.data.data]);
 
+    useEffect(() => {
+        async function fetchData() {
+            if (!states?.user?.id) return;
+
+            setIsLoadingTenants(true);
+            setTenantError(null);
+
+            try {
+                const tenantData = await getLandlordTenant(states.user.id);
+                setTenants(Array.isArray(tenantData) ? tenantData : []);
+            } catch (error) {
+                console.error('Error fetching tenants:', error);
+                setTenantError(
+                    'Failed to load tenant data. Please try again later.'
+                );
+                setTenants([]);
+            } finally {
+                setIsLoadingTenants(false);
+            }
+        }
+
+        fetchData();
+    }, [states?.user?.id]);
+
     const totalProperties = occupiedCount + vacantCount;
     const occupiedPercentage = (occupiedCount / totalProperties) * 100;
 
@@ -134,15 +160,6 @@ const LandlordDash: FC = () => {
         const property = propertie?.find((p) => p.value === id);
         return property?.label;
     };
-    useEffect(() => {
-        async function fetchData() {
-            const tenantData = await getLandlordTenant(states?.user?.id);
-            setTenants(tenantData);
-        }
-        if (states?.user?.id) {
-            fetchData();
-        }
-    }, [states, getMyProperties?.data.data]);
 
     const handleNavigate = (route: string) => {
         router.push(route);
@@ -321,7 +338,27 @@ const LandlordDash: FC = () => {
                                     ))}
                                 </Dropdown>
                             </div>
-                            <TenantTable tenants={tenants} />
+                            {isLoadingTenants ? (
+                                <div className="flex justify-center p-8">
+                                    <Loader loading={true} />
+                                </div>
+                            ) : tenantError ? (
+                                <div className="text-red-500 text-center p-4 bg-red-50 rounded">
+                                    {tenantError}
+                                </div>
+                            ) : tenants.length === 0 ? (
+                                <div className="text-center p-8 bg-gray-50 rounded-lg">
+                                    <p className="text-gray-500">
+                                        No tenants found.
+                                    </p>
+                                    <p className="text-sm text-gray-400 mt-2">
+                                        Add properties and invite tenants to get
+                                        started.
+                                    </p>
+                                </div>
+                            ) : (
+                                <TenantTable tenants={tenants} />
+                            )}
                         </div>
                     </div>
 

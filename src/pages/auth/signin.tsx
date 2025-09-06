@@ -243,6 +243,7 @@ function Signin() {
             })
             .catch((error: any) => {
                 setIsNavigating(false);
+                console.log(error);
                 toast.error(
                     error?.message || 'Something went wrong please try again'
                 );
