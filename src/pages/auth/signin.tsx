@@ -166,7 +166,7 @@ function Signin() {
                         data?.data?.user?.accountTypes?.length === 0 &&
                         !data?.data?.user?.currentKyc
                     ) {
-                        window.location.href = '/onboarding';
+                        handleNavigation('/onboarding');
                         return;
                     }
 
