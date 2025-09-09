@@ -162,49 +162,38 @@ function Signin() {
                         isAuthenticated: true,
                     });
 
-                    if (
-                        data?.data?.user?.accountTypes?.length === 0 &&
-                        !data?.data?.user?.currentKyc
-                    ) {
+                    // If user has no account types, redirect to onboarding
+                    if (data?.data?.user?.accountTypes?.length === 0) {
                         handleNavigation('/onboarding');
                         return;
                     }
 
-                    if (
-                        data?.data?.user?.currentKyc &&
-                        data?.data?.user?.currentKyc?.status ===
+                    // Handle KYC status
+                    if (data?.data?.user?.currentKyc) {
+                        if (
+                            data.data.user.currentKyc.status ===
                             KycStatus.INCOMPLETE
-                    ) {
-                        router.push('/onboarding/kyc');
+                        ) {
+                            router.push('/onboarding/kyc');
+                            return;
+                        } else if (
+                            data.data.user.currentKyc.status ===
+                            KycStatus.COMPLETE
+                        ) {
+                            states?.setActiveKyc(data.data.user.currentKyc);
+                            states?.setScreen && states?.setScreen('');
+                            states?.setActiveAccount &&
+                                states?.setActiveAccount(
+                                    data.data.user.currentKyc?.accountType
+                                );
+                        }
+                    } else {
+                        // If user has account types but no KYC, redirect to onboarding
+                        handleNavigation('/onboarding');
                         return;
                     }
 
-                    if (
-                        data?.data?.user?.currentKyc &&
-                        data?.data?.user?.currentKyc?.status ===
-                            KycStatus.COMPLETE
-                    ) {
-                        states?.setActiveKyc(data?.data?.user?.currentKyc);
-                        states?.setScreen && states?.setScreen('');
-                        states?.setActiveAccount &&
-                            states?.setActiveAccount(
-                                data?.data?.user?.currentKyc?.accountType
-                            );
-                    } else if (
-                        data?.data?.user?.accountTypes?.length > 0 &&
-                        !data?.data?.user?.currentKyc
-                    ) {
-                        // If user has account types but no current KYC, set the first account type as active
-                        const firstAccountType =
-                            data?.data?.user?.accountTypes[0];
-                        states?.setActiveAccount &&
-                            states?.setActiveAccount(firstAccountType);
-                        console.log(
-                            'Set active account to first available:',
-                            firstAccountType
-                        );
-                    }
-
+                    // Handle tenant confirmation if needed
                     if (tenantId && propertyId) {
                         confirmTenant({
                             tenantId: tenantId.toString(),

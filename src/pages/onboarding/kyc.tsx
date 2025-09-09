@@ -34,6 +34,10 @@ export default function KycOnboarding() {
     );
 
     console.log(accountTypes?.data, 'accountTypes');
+    console.log(
+        'Full accountTypes structure:',
+        JSON.stringify(accountTypes?.data, null, 2)
+    );
 
     const step = useMemo(() => states?.step as number, [states?.step]);
 
@@ -46,26 +50,72 @@ export default function KycOnboarding() {
     };
 
     useEffect(() => {
-        if (states?.activeKyc && Array.isArray(accountTypes?.data)) {
+        console.log('useEffect triggered with:', {
+            activeKycAccountType: states?.activeKyc?.accountType,
+            accountTypesData: accountTypes?.data,
+            userAccountTypes: states?.user?.accountTypes,
+            currentKyc: states?.user?.currentKyc,
+        });
+
+        if (
+            states?.activeKyc?.accountType &&
+            Array.isArray(accountTypes?.data)
+        ) {
+            console.log('Branch 1: activeKyc has accountType');
             const acctType = accountTypes?.data.find(
                 (accountype: AccountType) => {
                     const typeID = states?.activeKyc?.accountType;
+                    console.log(
+                        'Comparing:',
+                        Number(accountype?.typeID),
+                        '===',
+                        Number(typeID)
+                    );
                     return Number(accountype?.typeID) === Number(typeID);
                 }
             );
             console.log(acctType, 'acctType');
 
             setAccounType(acctType);
+            states?.setActiveAccount(states?.activeKyc?.accountType);
         } else {
+            console.log('Branch 2: fallback logic');
+            // Fallback to user's first account type if currentKyc is not available
+            const fallbackAccountType =
+                states?.user?.currentKyc?.accountType ||
+                (states?.user?.accountTypes && states?.user?.accountTypes[0]) ||
+                1; // Default to tenant (1)
+
+            console.log('Fallback account type:', fallbackAccountType);
+
             states?.setActiveKyc({
-                // @ts-ignore
-                accountType: states?.user?.currentKyc?.accountType,
+                accountType: fallbackAccountType,
                 kycStage: 1,
                 nextStage: 2,
                 status: 'INCOMPLETE',
             });
-            states?.setActiveAccount(states?.user?.currentKyc?.accountType);
-            // setAccounType(states?.user?.currentKyc?.accountType);
+            states?.setActiveAccount(fallbackAccountType);
+
+            // Find and set the account type
+            if (Array.isArray(accountTypes?.data)) {
+                console.log('Looking for account type in data...');
+                const acctType = accountTypes?.data.find(
+                    (accountype: AccountType) => {
+                        console.log(
+                            'Comparing fallback:',
+                            Number(accountype?.typeID),
+                            '===',
+                            Number(fallbackAccountType)
+                        );
+                        return (
+                            Number(accountype?.typeID) ===
+                            Number(fallbackAccountType)
+                        );
+                    }
+                );
+                console.log('Found acctType:', acctType);
+                setAccounType(acctType);
+            }
         }
     }, [states?.activeKyc?.accountType, accountTypes?.data, states]);
 
@@ -111,8 +161,18 @@ export default function KycOnboarding() {
         router.replace('/dashboard');
     }
 
+    console.log('KYC Page - Current step:', step);
+    console.log('KYC Page - Active account:', states?.activeAccount);
+    console.log('KYC Page - User:', states?.user);
+
     return (
         <section className="">
+            <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+                <h3 className="font-bold text-red-800">KYC Debug Info:</h3>
+                <p>Current Step: {step}</p>
+                <p>Active Account: {states?.activeAccount}</p>
+                <p>Account Type: {accounType?.accountType}</p>
+            </div>
             <div className="flex gap-4">
                 <button
                     onClick={onNavBack}

@@ -25,11 +25,18 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
     const [showError, setShowError] = useState(false);
     const [showMessage, setShowMessage] = useState('');
     const [handleFileChangeCalled, setHandleFileChangeCalled] = useState(false);
-    console.log(idType, 'idType');
+
     const imageRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
     const states = useAppStore();
+
+    // Ensure activeAccount is set if not already
+    useEffect(() => {
+        if (!states?.activeAccount && states?.user?.accountTypes?.length) {
+            states?.setActiveAccount(states.user.accountTypes[0]);
+        }
+    }, [states?.activeAccount, states?.user?.accountTypes, states]);
 
     const { kycHandler, isLoading, fileTypes, loadingFileType } = useKycHandler(
         'document_upload',
@@ -305,6 +312,25 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                 <li>Your utility bill</li>
             </ul>
             <section className="lg:w-4/6 mr-auto">
+                {loadingFileType && (
+                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-blue-700">
+                            Loading document types...
+                        </p>
+                    </div>
+                )}
+
+                {!loadingFileType && !fileTypes?.data?.data?.length && (
+                    <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-yellow-700">
+                            No document types available. Please ensure you have
+                            an active account type set.
+                            {!states?.activeAccount &&
+                                ' (Active account not set)'}
+                        </p>
+                    </div>
+                )}
+
                 <div className="flex gap-5 items-start">
                     <div className="flex-1">
                         <Select
@@ -312,11 +338,7 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                             selectDivClassName="bg-white"
                             onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                                 const selectedTypeID: any[] = [];
-                                console.log(
-                                    e.target.value,
-                                    'value>>>',
-                                    selectedTypeID
-                                );
+
                                 setIdType(e.target.value);
                                 const selectedOption =
                                     e.target.selectedOptions[0];
@@ -327,30 +349,9 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
 
                                 setTypeIDs(selectedTypeID);
                             }}
-                            // register={{
-                            //     onChange: (
-                            //         e: ChangeEvent<HTMLSelectElement>
-                            //     ) => {
-
-                            //         const selectedTypeID: any[] = [];
-                            //         console.log(e.target.value, 'value>>>', selectedTypeID);
-                            //         setIdType(e.target.value);
-                            //         const selectedOption =
-                            //             e.target.selectedOptions[0];
-                            //         if (selectedOption)
-                            //             selectedTypeID.push(
-                            //                 selectedOption.getAttribute(
-                            //                     'data-id'
-                            //                 )
-                            //             );
-
-                            //         setTypeIDs(selectedTypeID);
-                            //     },
-                            //     value: idType,
-                            // }}
                         >
                             <option selected value="">
-                                Select
+                                {loadingFileType ? 'Loading...' : 'Select'}
                             </option>
                             {fileTypes &&
                                 fileTypeOptions.map((ftype, i) => {
