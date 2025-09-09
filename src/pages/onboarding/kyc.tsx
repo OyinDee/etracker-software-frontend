@@ -167,12 +167,6 @@ export default function KycOnboarding() {
 
     return (
         <section className="">
-            <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
-                <h3 className="font-bold text-red-800">KYC Debug Info:</h3>
-                <p>Current Step: {step}</p>
-                <p>Active Account: {states?.activeAccount}</p>
-                <p>Account Type: {accounType?.accountType}</p>
-            </div>
             <div className="flex gap-4">
                 <button
                     onClick={onNavBack}
