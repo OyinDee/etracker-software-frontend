@@ -156,41 +156,37 @@ function Signin() {
                 reset();
 
                 if (!!data?.data?.tokens) {
+                    // Set user in state
                     states?.setUser({
                         token: data?.data?.tokens,
                         user: data?.data.user,
                         isAuthenticated: true,
                     });
 
-                    // If user has no account types, redirect to onboarding
-                    if (data?.data?.user?.accountTypes?.length === 0) {
+                    // Clear any existing KYC and account selections
+                    states?.setActiveKyc(undefined);
+                    states?.setScreen && states?.setScreen('');
+                    states?.setActiveAccount(undefined);
+
+                    // Check if user has any account types
+                    if (
+                        !data?.data?.user?.accountTypes ||
+                        data.data.user.accountTypes.length === 0
+                    ) {
+                        // No account types - redirect to account selection
+                        toast.success(
+                            'Please select your account type to continue'
+                        );
                         handleNavigation('/onboarding');
                         return;
                     }
 
-                    // Handle KYC status
-                    if (data?.data?.user?.currentKyc) {
-                        if (
-                            data.data.user.currentKyc.status ===
-                            KycStatus.INCOMPLETE
-                        ) {
-                            router.push('/onboarding/kyc');
-                            return;
-                        } else if (
-                            data.data.user.currentKyc.status ===
-                            KycStatus.COMPLETE
-                        ) {
-                            states?.setActiveKyc(data.data.user.currentKyc);
-                            states?.setScreen && states?.setScreen('');
-                            states?.setActiveAccount &&
-                                states?.setActiveAccount(
-                                    data.data.user.currentKyc?.accountType
-                                );
-                        }
-                    } else {
-                        // If user has account types but no KYC, redirect to onboarding
-                        handleNavigation('/onboarding');
-                        return;
+                    // User has account types - set active account and KYC if available
+                    if (data.data.user.currentKyc?.accountType) {
+                        states?.setActiveKyc(data.data.user.currentKyc);
+                        states?.setActiveAccount(
+                            data.data.user.currentKyc.accountType
+                        );
                     }
 
                     // Handle tenant confirmation if needed

@@ -7,9 +7,10 @@ import { useQuery } from 'react-query';
 import { UserService } from 'services';
 import { AccountType } from 'interfaces';
 import { useAppStore } from 'hooks/useAppStore';
-import { Router, useRouter } from 'next/router';
+import { useRouter } from 'next/router';
 import Loader from 'components/base/Loader';
 import { GET_ACCOUNT_TYPES_QUERY_KEY } from 'utils/constants';
+import axios from 'axios'; // Import axios for making HTTP requests
 
 export default function Onboarding() {
     const { data: accountTypes, isLoading } = useQuery(
@@ -19,6 +20,22 @@ export default function Onboarding() {
 
     const states = useAppStore();
     const router = useRouter();
+
+    useEffect(() => {
+        // Check KYC status when component mounts
+        if (states?.user?.currentKyc) {
+            if (states.user.currentKyc.status === 'INCOMPLETE') {
+                router.push('/onboarding/kyc');
+                return;
+            } else if (states.user.currentKyc.status === 'COMPLETE') {
+                states?.setActiveKyc(states.user.currentKyc);
+                states?.setScreen('');
+                states?.setActiveAccount(states.user.currentKyc.accountType);
+                router.push('/dashboard');
+                return;
+            }
+        }
+    }, [states?.user?.currentKyc, router, states]);
 
     return (
         <section className="bg-brand-bg h-full">
@@ -40,21 +57,48 @@ export default function Onboarding() {
                             return (
                                 <NavButton
                                     key={account?.id}
-                                    tooltip="List and manage your properties, receive rental  
-                                    applications, create lease applications, accept rent, manage maintenance requests e.t.c "
-                                    handleClick={() => {
-                                        account.status = 'INCOMPLETE';
-                                        states?.setStartKycScreen('onboarding');
-                                        states?.setActiveKyc({
-                                            accountType: account?.typeID,
-                                            kycStage: 1,
-                                            nextStage: 2,
-                                            status: 'INCOMPLETE',
-                                        });
-                                        states?.setActiveAccount(
-                                            account?.typeID
-                                        );
-                                        router.push('/onboarding/kyc');
+                                    tooltip="List and manage your properties, receive rental applications, create lease applications, accept rent, manage maintenance requests e.t.c"
+                                    handleClick={async () => {
+                                        try {
+                                            // Make POST request to update account type
+                                            const response = await axios.post(
+                                                `https://etracker-software-api.onrender.com/api/v1/user-profile/update-account-type/${states?.user?.id}`,
+                                                {
+                                                    accountType:
+                                                        account?.typeID,
+                                                },
+                                                {
+                                                    headers: {
+                                                        Authorization: `Bearer ${states?.token}`,
+                                                    },
+                                                }
+                                            );
+
+                                            // Update state based on successful response
+                                            states?.setStartKycScreen(
+                                                'onboarding'
+                                            );
+                                            states?.setActiveKyc({
+                                                accountType: account?.typeID,
+                                                kycStage: 1,
+                                                nextStage: 2,
+                                                status: 'INCOMPLETE',
+                                            });
+                                            states?.setActiveAccount(
+                                                account?.typeID
+                                            );
+                                            router.push('/onboarding/kyc');
+                                        } catch (error: any) {
+                                            console.error(
+                                                'Error updating account type:',
+                                                error
+                                            );
+                                            // Handle errors (e.g., show toast notification)
+                                            alert(
+                                                error.response?.data?.message ||
+                                                    'Failed to update account type. Please try again.'
+                                            );
+                                        }
                                     }}
                                 >
                                     <div className="ml-5">

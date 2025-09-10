@@ -1,5 +1,6 @@
 import DashboardLayout from 'layouts/dashboard';
 import { ReactElement, useEffect, useState } from 'react';
+import { useRouter } from 'next/router'; // Add useRouter for redirection
 import useAccountType from 'hooks/useAccountType';
 import TenantDash from './tenants/tenatDashboard';
 import LandlordDash from './landlordDashboard';
@@ -8,46 +9,55 @@ import { useAppStore } from 'hooks/useAppStore';
 export default function Dashboard() {
     const { acctType, isLoading, error } = useAccountType();
     const states = useAppStore();
+    const router = useRouter();
     const [loadingTimeout, setLoadingTimeout] = useState(false);
 
     // @ts-ignore
     const accountType = states?.user?.currentKyc?.accountType;
+    const isUserVerified = states?.user?.isUserVerified;
+    const userAccountTypes = states?.user?.accountTypes; // Use accountTypes from user data
 
-    // Set a timeout for loading state to prevent infinite loading
+    // Redirect unverified users to onboarding
+    useEffect(() => {
+        if (
+            states?.isAuthenticated &&
+            isUserVerified === false &&
+            !router.asPath.includes('/onboarding')
+        ) {
+            router.push('/onboarding');
+        }
+    }, [states?.isAuthenticated, isUserVerified, router]);
+
+    // Set a timeout for loading state
     useEffect(() => {
         const timer = setTimeout(() => {
             setLoadingTimeout(true);
         }, 10000); // 10 seconds timeout
-
         return () => clearTimeout(timer);
     }, []);
 
-    // Debug logging
-    console.log('Dashboard Debug:', {
-        acctType,
-        isLoading,
-        error,
-        activeAccount: states?.activeAccount,
-        accountType,
-        isAuthenticated: states?.isAuthenticated,
-        user: states?.user,
-        currentKyc: states?.user?.currentKyc,
-        loadingTimeout,
-    });
-
-    // Determine what dashboard to show based on available data
+    // Determine dashboard component
     const getDashboardComponent = () => {
-        // Priority 1: Use accountType from currentKyc if available
+        // Priority 1: Use accountType from currentKyc
         if (accountType !== undefined) {
             return accountType === 1 ? <TenantDash /> : <LandlordDash />;
         }
 
-        // Priority 2: Use acctType if available
+        // Priority 2: Use user.accountTypes
+        if (Array.isArray(userAccountTypes) && userAccountTypes.length > 0) {
+            return userAccountTypes.includes(1) ? (
+                <TenantDash />
+            ) : (
+                <LandlordDash />
+            );
+        }
+
+        // Priority 3: Use acctType from useAccountType
         if (acctType?.typeID !== undefined) {
             return acctType.typeID === 1 ? <TenantDash /> : <LandlordDash />;
         }
 
-        // Priority 3: Use activeAccount as fallback
+        // Priority 4: Use activeAccount as fallback
         if (states?.activeAccount !== undefined) {
             return states.activeAccount === 1 ? (
                 <TenantDash />
@@ -56,12 +66,18 @@ export default function Dashboard() {
             );
         }
 
-        // Default to landlord dashboard if we can't determine
-        return <LandlordDash />;
+        // Default to onboarding if no account type data is available
+        router.push('/onboarding');
+        return null;
     };
 
-    // Show loading only if we're actually loading and haven't timed out
-    if (isLoading && !loadingTimeout && !accountType && !acctType) {
+    // Show loading state
+    if (
+        isLoading &&
+        !loadingTimeout &&
+        !accountType &&
+        !userAccountTypes?.length
+    ) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -72,8 +88,13 @@ export default function Dashboard() {
         );
     }
 
-    // Show error state if there's an error fetching account types and no fallback data
-    if (error && !accountType && !acctType && !states?.activeAccount) {
+    // Show error state
+    if (
+        error &&
+        !accountType &&
+        !userAccountTypes?.length &&
+        !states?.activeAccount
+    ) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
@@ -91,8 +112,13 @@ export default function Dashboard() {
         );
     }
 
-    // Show timeout error if loading has timed out
-    if (loadingTimeout && !accountType && !acctType && !states?.activeAccount) {
+    // Show timeout error
+    if (
+        loadingTimeout &&
+        !accountType &&
+        !userAccountTypes?.length &&
+        !states?.activeAccount
+    ) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">

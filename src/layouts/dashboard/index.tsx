@@ -63,6 +63,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         const initializeUser = async () => {
             if (!isLoading && mounted) {
                 if (userProfile) {
+                    // First check: Redirect to onboarding if no account types
+                    if (
+                        !userProfile.accountTypes ||
+                        userProfile.accountTypes.length === 0
+                    ) {
+                        router.replace('/onboarding');
+                        return;
+                    }
+
                     // Check if user data actually changed to prevent unnecessary updates
                     const currentUser = states?.user;
                     const userChanged =
