@@ -22,20 +22,24 @@ export default function Onboarding() {
     const router = useRouter();
 
     useEffect(() => {
-        // Check KYC status when component mounts
-        if (states?.user?.currentKyc) {
-            if (states.user.currentKyc.status === 'INCOMPLETE') {
+        // Skip if no user or already processing
+        if (!states?.user) return;
+
+        const { currentKyc } = states.user;
+
+        // Only proceed if we have KYC data
+        if (currentKyc) {
+            if (currentKyc.status === 'INCOMPLETE') {
                 router.push('/onboarding/kyc');
-                return;
-            } else if (states.user.currentKyc.status === 'COMPLETE') {
-                states?.setActiveKyc(states.user.currentKyc);
-                states?.setScreen('');
-                states?.setActiveAccount(states.user.currentKyc.accountType);
+            } else if (currentKyc.status === 'COMPLETE') {
+                // Batch state updates together
+                states.setActiveKyc(currentKyc);
+                states.setScreen('');
+                states.setActiveAccount(currentKyc.accountType);
                 router.push('/dashboard');
-                return;
             }
         }
-    }, [states?.user?.currentKyc, router, states]);
+    }, [states?.user?.currentKyc?.status]); // Only depend on status changes
 
     return (
         <section className="bg-brand-bg h-full">

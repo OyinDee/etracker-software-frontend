@@ -16,7 +16,7 @@ export default function OnboardingLayout({
         if ((states?.user?.accountTypes?.length ?? 0) > 0) {
             router.replace('/onboarding/kyc');
         }
-    });
+    }, [states?.user?.accountTypes, router]);
 
     return (
         <main className="max-w-screen-4xl mx-auto overflow-x-clip">

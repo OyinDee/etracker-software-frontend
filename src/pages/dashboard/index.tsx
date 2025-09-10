@@ -19,14 +19,15 @@ export default function Dashboard() {
 
     // Redirect unverified users to onboarding
     useEffect(() => {
+        // Only redirect if there's no KYC data at all
         if (
             states?.isAuthenticated &&
-            isUserVerified === false &&
+            !accountType &&
             !router.asPath.includes('/onboarding')
         ) {
             router.push('/onboarding');
         }
-    }, [states?.isAuthenticated, isUserVerified, router]);
+    }, [states?.isAuthenticated, accountType, router]);
 
     // Set a timeout for loading state
     useEffect(() => {

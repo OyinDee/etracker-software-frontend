@@ -12,7 +12,8 @@ interface Props {
     selectClassName?: string;
     labelClassName?: string;
     placeholder?: string;
-    onChange?: (e: ChangeEvent<HTMLSelectElement>) => void; // Add onChange prop
+    disabled?: boolean;
+    onChange?: (e: ChangeEvent<HTMLSelectElement>) => void;
 }
 
 export default function Select({
@@ -27,7 +28,8 @@ export default function Select({
     selectClassName,
     labelClassName,
     placeholder,
-    onChange, // Destructure onChange from props
+    disabled,
+    onChange,
 }: Props) {
     const id = useId();
     return (
@@ -50,14 +52,14 @@ export default function Select({
                 className={`mt-3 px-3 py-2 border rounded-[3px]  bg-[#D9D9D929] data-[invalid='true']:border-red-500 border-gray-300 focus:border-primary-600 ${selectDivClassName}`}
             >
                 <select
-                    placeholder={placeholder}
                     id={id}
-                    {...register}
-                    value={value} // Include value prop here
-                    onChange={onChange} // Pass onChange handler to the select element
+                    value={value}
                     className={`block px-3 py-2 w-full text-sm text-black 
 					 focus:outline-none autofill:bg-gray-200 bg-transparent bg-opacity-0
 					 focus:ring-0 focus:border-none peer ${selectClassName}`}
+                    onChange={onChange}
+                    disabled={disabled}
+                    {...register}
                 >
                     {children}
                 </select>

@@ -155,51 +155,64 @@ function Signin() {
         states?.setActiveAccount(undefined);
 
         try {
-            const response = await loginAsync(values);
-            const data: GenericResponse<LoginResponse> = response.data;
-            console.log('Login response:', data);
+            const response = (await loginAsync(
+                values
+            )) as unknown as GenericResponse<LoginResponse>;
+            console.log('Login response:', response);
             states?.setStartKycScreen && states?.setStartKycScreen('');
             reset();
 
-            if (data?.data) {
-                const { user, tokens } = data.data;
+            if (response?.data) {
+                const { user, tokens } = response.data;
+                // Update user state with KYC information
                 states?.setUser({
-                    token: tokens, // tokens is a string
-                    user,
+                    token: tokens,
+                    user: {
+                        ...user,
+                        currentKyc: user.currentKyc || states?.user?.currentKyc,
+                    },
                     isAuthenticated: true,
                 });
 
-                states?.setActiveKyc(undefined);
-                states?.setScreen && states?.setScreen('');
-                states?.setActiveAccount(undefined);
-
-                // Check isUserVerified first
-                if (user.isUserVerified === false) {
-                    toast.success('Please complete onboarding to continue');
-                    await handleNavigation('/onboarding');
-                    return;
-                }
-
-                // Check accountTypes
-                if (!user.accountTypes || user.accountTypes.length === 0) {
-                    toast.success(
-                        'Please select your account type to continue'
-                    );
-                    await handleNavigation('/onboarding');
-                    return;
-                }
-
-                // Check KYC status
-                if (user.currentKyc?.accountType) {
+                // Set active KYC if it exists
+                if (user.currentKyc) {
                     states?.setActiveKyc(user.currentKyc);
                     states?.setActiveAccount(user.currentKyc.accountType);
-                    if (user.currentKyc.status === 'INCOMPLETE') {
-                        await handleNavigation('/onboarding/kyc');
+                }
+
+                // Handle redirection based on KYC status
+                try {
+                    if (!user.accountTypes || user.accountTypes.length === 0) {
+                        toast.success(
+                            'Please select your account type to continue'
+                        );
+                        await router.push('/onboarding');
                         return;
                     }
+
+                    // Use activeKyc from state which we just set
+                    const currentKyc = states.activeKyc || user.currentKyc;
+
+                    if (!currentKyc) {
+                        // If no KYC exists, redirect to onboarding
+                        await router.push('/onboarding');
+                        return;
+                    }
+
+                    if (currentKyc.status === 'INCOMPLETE') {
+                        await router.push('/onboarding/kyc');
+                        return;
+                    }
+
+                    // If we get here, KYC is complete
+                    await router.push('/dashboard');
+                } catch (error) {
+                    console.error('Navigation error:', error);
+                    // Fallback to window.location if router.push fails
+                    window.location.href = '/dashboard';
                 }
             }
-            setShowMessage(data?.message);
+            setShowMessage(response?.message);
         } catch (error: any) {
             setIsNavigating(false);
             console.error('Login error:', error);
