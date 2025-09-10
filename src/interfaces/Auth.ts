@@ -79,6 +79,7 @@ export interface UpdateAccountType {
 }
 
 export interface LoginResponse {
+    user: User;
     tokens: string;
 }
 
@@ -111,4 +112,10 @@ export interface CurrentKyc {
     kycStage: number;
     status: string;
     nextStage: number;
+}
+
+export interface GenericResponse<T> {
+    success: boolean;
+    message: string;
+    data: T;
 }

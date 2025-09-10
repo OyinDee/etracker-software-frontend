@@ -18,6 +18,7 @@ export const AuthService = {
     ): Promise<AxiosResponse<GenericResponse<LoginResponse>>> {
         try {
             const { data } = await http.post('/api/v1/auth/login', reqObj);
+            console.log(data);
             return Promise.resolve(data);
         } catch (error: any) {
             return Promise.reject(error?.response.data);

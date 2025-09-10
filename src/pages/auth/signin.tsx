@@ -22,7 +22,7 @@ import { useMutation } from 'react-query';
 import { useAppStore } from 'hooks/useAppStore';
 import { MutationKey } from 'react-query';
 import Loader from 'components/base/Loader';
-import { KycStatus } from 'interfaces';
+import { KycStatus, LoginResponse, GenericResponse } from 'interfaces';
 import useLandlord from 'hooks/useLandlord';
 import { createHistory } from 'services/newServices/history';
 
@@ -54,26 +54,29 @@ function Signin() {
     const { tenantId, propertyId } = router.query;
     const { confirmTenant, isConfirmTenantLoading } = useLandlord();
 
-    // Properly destructure the verify account mutation
     const {
         mutate: verifyAccountMutate,
         isLoading: isVerifyLoading,
         isSuccess,
-    } = useMutation({
-        mutationFn: AuthService.verifyAccount,
-        onSuccess(data: any) {
-            setIsError(false);
-            setShowMessage(data?.message + '! you can login');
-            router.push('/auth/signin');
+    } = useMutation(
+        async (reqObj: { token: string }) => {
+            const response = await AuthService.verifyAccount(reqObj);
+            return response.data;
         },
-        onError(error: any) {
-            setIsError(true);
-            toast.error(error.message, { id: 'error' });
-        },
-        retry: 2,
-    });
+        {
+            onSuccess(data: GenericResponse<any>) {
+                setIsError(false);
+                setShowMessage(data?.message + '! you can login');
+                router.push('/auth/signin');
+            },
+            onError(error: any) {
+                setIsError(true);
+                toast.error(error.message, { id: 'error' });
+            },
+            retry: 2,
+        }
+    );
 
-    // Consolidate navigation logic into a single function
     const handleNavigation = useCallback(
         async (path: string) => {
             if (isNavigating) return;
@@ -88,29 +91,32 @@ function Signin() {
         [isNavigating, router]
     );
 
-    // Modify useEffect for auth check
+    // Updated useEffect to prioritize isUserVerified
     useEffect(() => {
-        if (states?.isAuthenticated && !isNavigating) {
-            handleNavigation('/dashboard');
-        }
-    }, [states?.isAuthenticated, handleNavigation, isNavigating]);
-
-    // Modify useEffect for token check
-    useEffect(() => {
-        if (states?.token && !router.asPath.includes('?') && !isNavigating) {
-            if (states?.user?.accountTypes?.includes(states?.activeAccount)) {
+        if (
+            states?.token &&
+            states?.user?.isUserVerified !== undefined &&
+            !router.asPath.includes('?') &&
+            !isNavigating
+        ) {
+            if (states.user.isUserVerified === false) {
+                handleNavigation('/onboarding');
+            } else if (
+                states.user.accountTypes?.includes(states?.activeAccount)
+            ) {
                 handleNavigation('/dashboard');
             } else {
-                handleNavigation('/dashboard/properties');
+                handleNavigation('/dashboard');
             }
         }
     }, [
         states?.token,
+        states?.user?.isUserVerified,
+        states?.user?.accountTypes,
+        states?.activeAccount,
         handleNavigation,
         isNavigating,
         router.asPath,
-        states?.activeAccount,
-        states?.user?.accountTypes,
     ]);
 
     const togglePasswordRecovery = () => {
@@ -137,10 +143,8 @@ function Signin() {
     const onSubmit = async (values: any) => {
         console.log('routeQuery>>>', router.query);
 
-        // Prevent multiple submissions
         if (isLoading || isNavigating) return;
 
-        // Clear previous error message
         setErrorMessage('');
 
         if (propertyId) {
@@ -149,93 +153,62 @@ function Signin() {
 
         states?.setActiveKyc(undefined);
         states?.setActiveAccount(undefined);
-        // @ts-ignore: backend returns user and tokens
-        loginAsync(values)
-            .then((data: any) => {
-                states?.setStartKycScreen && states?.setStartKycScreen('');
-                reset();
 
-                if (!!data?.data?.tokens) {
-                    // Set user in state
-                    states?.setUser({
-                        token: data?.data?.tokens,
-                        user: data?.data.user,
-                        isAuthenticated: true,
-                    });
+        try {
+            const response = await loginAsync(values);
+            const data: GenericResponse<LoginResponse> = response.data;
+            console.log('Login response:', data);
+            states?.setStartKycScreen && states?.setStartKycScreen('');
+            reset();
 
-                    // Clear any existing KYC and account selections
-                    states?.setActiveKyc(undefined);
-                    states?.setScreen && states?.setScreen('');
-                    states?.setActiveAccount(undefined);
+            if (data?.data) {
+                const { user, tokens } = data.data;
+                states?.setUser({
+                    token: tokens, // tokens is a string
+                    user,
+                    isAuthenticated: true,
+                });
 
-                    // Check if user has any account types
-                    if (
-                        !data?.data?.user?.accountTypes ||
-                        data.data.user.accountTypes.length === 0
-                    ) {
-                        // No account types - redirect to account selection
-                        toast.success(
-                            'Please select your account type to continue'
-                        );
-                        handleNavigation('/onboarding');
+                states?.setActiveKyc(undefined);
+                states?.setScreen && states?.setScreen('');
+                states?.setActiveAccount(undefined);
+
+                // Check isUserVerified first
+                if (user.isUserVerified === false) {
+                    toast.success('Please complete onboarding to continue');
+                    await handleNavigation('/onboarding');
+                    return;
+                }
+
+                // Check accountTypes
+                if (!user.accountTypes || user.accountTypes.length === 0) {
+                    toast.success(
+                        'Please select your account type to continue'
+                    );
+                    await handleNavigation('/onboarding');
+                    return;
+                }
+
+                // Check KYC status
+                if (user.currentKyc?.accountType) {
+                    states?.setActiveKyc(user.currentKyc);
+                    states?.setActiveAccount(user.currentKyc.accountType);
+                    if (user.currentKyc.status === 'INCOMPLETE') {
+                        await handleNavigation('/onboarding/kyc');
                         return;
                     }
-
-                    // User has account types - set active account and KYC if available
-                    if (data.data.user.currentKyc?.accountType) {
-                        states?.setActiveKyc(data.data.user.currentKyc);
-                        states?.setActiveAccount(
-                            data.data.user.currentKyc.accountType
-                        );
-                    }
-
-                    // Handle tenant confirmation if needed
-                    if (tenantId && propertyId) {
-                        confirmTenant({
-                            tenantId: tenantId.toString(),
-                            propertyId: propertyId.toString(),
-                        })
-                            .then((res: any) => {
-                                const landlordId = res.data?.current_owner;
-                                if (landlordId) {
-                                    createHistory(
-                                        tenantId.toString(),
-                                        data.data.user.email,
-                                        landlordId,
-                                        propertyId.toString()
-                                    )
-                                        .then(() => {
-                                            router.push(
-                                                '/dashboard/properties'
-                                            );
-                                        })
-                                        .catch((historyError: any) => {
-                                            toast.error(historyError.message);
-                                        });
-                                }
-                            })
-                            .catch((errors: any) => {
-                                toast.error(errors.message);
-                            });
-                    } else {
-                        setShowMessage(data?.message);
-                        setTimeout(() => {
-                            router.push('/dashboard/properties');
-                        }, 2000);
-                    }
                 }
-                setShowMessage(data?.message);
-            })
-            .catch((error: any) => {
-                setIsNavigating(false);
-                console.log(error);
-                toast.error(
-                    error?.message || 'Something went wrong please try again'
-                );
-            });
+            }
+            setShowMessage(data?.message);
+        } catch (error: any) {
+            setIsNavigating(false);
+            console.error('Login error:', error);
+            toast.error(
+                error?.message || 'Something went wrong please try again'
+            );
+        }
     };
 
-    // Update the useEffect to use verifyAccountMutate
     useEffect(() => {
         if (router?.query?.token) {
             verifyAccountMutate({ token: router.query.token as string });
@@ -248,7 +221,6 @@ function Signin() {
                 <Loader loading={isVerifyLoading} />
             ) : (
                 <div className="min-h-screen flex">
-                    {/* Left Side - Image Panel */}
                     <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-blue-900 to-indigo-900">
                         <div className="absolute inset-0">
                             <Image
@@ -261,7 +233,6 @@ function Signin() {
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-indigo-900/30"></div>
                         </div>
 
-                        {/* Content Overlay */}
                         <div className="relative z-10 flex flex-col justify-center px-12 text-white">
                             <div className="max-w-md">
                                 <h2 className="text-4xl font-bold mb-6">
@@ -296,10 +267,8 @@ function Signin() {
                         </div>
                     </div>
 
-                    {/* Right Side - Form Panel */}
                     <div className="w-full lg:w-1/2 flex items-center justify-center p-4 bg-gray-50">
                         <div className="w-full max-w-md">
-                            {/* Header */}
                             <div className="text-center mb-8">
                                 <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                                     <HiOutlineLockClosed className="w-8 h-8 text-white" />
@@ -316,9 +285,7 @@ function Signin() {
                                 </p>
                             </div>
 
-                            {/* Card */}
                             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-                                {/* Success Message */}
                                 {!!showMessage && (
                                     <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
                                         <div className="flex items-center">
@@ -338,7 +305,6 @@ function Signin() {
                                     </div>
                                 )}
 
-                                {/* Error Message */}
                                 {!!errorMessage && (
                                     <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
                                         <div className="flex items-center">
@@ -358,12 +324,10 @@ function Signin() {
                                     </div>
                                 )}
 
-                                {/* Form */}
                                 <form
                                     onSubmit={handleSubmit(onSubmit)}
                                     className="space-y-6"
                                 >
-                                    {/* Email Input */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Email Address
@@ -386,7 +350,6 @@ function Signin() {
                                         )}
                                     </div>
 
-                                    {/* Password Input */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Password
@@ -428,7 +391,6 @@ function Signin() {
                                         )}
                                     </div>
 
-                                    {/* Forgot Password Link */}
                                     <div className="flex items-center justify-between">
                                         <button
                                             type="button"
@@ -457,7 +419,6 @@ function Signin() {
                                         )}
                                     </div>
 
-                                    {/* Submit Button */}
                                     <button
                                         type="submit"
                                         disabled={isLoading || isNavigating}
@@ -470,7 +431,6 @@ function Signin() {
                                             : 'Sign In'}
                                     </button>
 
-                                    {/* Divider */}
                                     <div className="relative">
                                         <div className="absolute inset-0 flex items-center">
                                             <div className="w-full border-t border-gray-300" />
@@ -482,7 +442,6 @@ function Signin() {
                                         </div>
                                     </div>
 
-                                    {/* Sign Up Link */}
                                     <div className="text-center">
                                         <span className="text-sm text-gray-600">
                                             Don&apos;t have an account?{' '}
@@ -497,7 +456,6 @@ function Signin() {
                                 </form>
                             </div>
 
-                            {/* Footer */}
                             <div className="text-center mt-8">
                                 <p className="text-xs text-gray-500">
                                     Secure property management platform
