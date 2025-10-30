@@ -1,14 +1,12 @@
 import Button from 'components/base/Button';
-import Select from 'components/base/form/Select';
 import Input from 'components/base/form/Input';
 import { ChangeEvent, FC, useEffect, useMemo, useRef, useState } from 'react';
 import { MdOutlineCancel } from 'react-icons/md';
-import { v4 as uuidv4 } from 'uuid';
 import { useAppStore } from 'hooks/useAppStore';
 import { toast } from 'react-hot-toast';
 import useKycHandler from 'hooks/useKycHandler';
 import { useRouter } from 'next/router';
-import { FileType, UploadedFile } from 'interfaces';
+import { UploadedFile } from 'interfaces';
 import useFileUploadHandler from 'hooks/useFileUploadHandler';
 import Loader from 'components/base/Loader';
 import { CustomFile } from 'interfaces/CustomFile';
@@ -18,8 +16,8 @@ interface DocumentFormProps {
 }
 
 export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
-    const [idType, setIdType] = useState('');
-    const [typeIDs, setTypeIDs] = useState<any[]>([]);
+    // track which required document index the user is currently uploading
+    const [currentIndex, setCurrentIndex] = useState(0);
     const [idNumber, setIdNumber] = useState('');
     const [files, setFiles] = useState<CustomFile[]>([]);
     const [showError, setShowError] = useState(false);
@@ -49,20 +47,7 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
         'document_upload'
     );
 
-    const selectedIdType = useMemo(
-        () => fileTypes?.data?.data?.find((el) => el.id === idType),
-        [idType, fileTypes?.data?.data]
-    );
-
-    // Improved file type options with better error handling
-    const fileTypeOptions = useMemo(() => {
-        if (!fileTypes?.data?.data) return [];
-
-        const allDocIDs = files.map((fx) => fx.typeID);
-        return fileTypes.data.data.filter(
-            (ft) => ft?.typeID && !allDocIDs.includes(ft.typeID)
-        );
-    }, [files, fileTypes?.data?.data]);
+    // We'll compute the list of required documents below and select the current one by index
 
     // Handle loading and error states
     const isLoadingData = loadingFileType || loadinguploadFiles;
@@ -70,11 +55,12 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
 
     const clearData = () => {
         setIdNumber('');
-        setIdType('');
     };
 
     const onPickImage = () => {
-        if (selectedIdType?.askForDocID === 1 && !idNumber) {
+        const selectedDoc = getRequiredDocuments[currentIndex];
+        if (!selectedDoc) return;
+        if (selectedDoc?.askForDocID === 1 && !idNumber) {
             setShowError(true);
             return;
         }
@@ -83,40 +69,64 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const fileList = e.target.files as FileList;
+        if (!fileList || fileList.length === 0) return;
         const preview = URL.createObjectURL(fileList[0]);
-        const id = uuidv4();
 
-        if (!selectedIdType || !fileList) return;
+        const selectedDoc = getRequiredDocuments[currentIndex];
+        if (!selectedDoc) return;
 
-        const existingDocIndex = files.findIndex(
-            (file) => Number(file.id) === Number(selectedIdType?.typeID)
-        );
         const DocPayload = {
             blob: fileList[0],
             preview,
-            idType: selectedIdType.name,
-            id: selectedIdType?.typeID,
+            idType: selectedDoc.name,
+            id: selectedDoc?.typeID,
             idNumber,
-            typeID: selectedIdType.typeID,
-            description: selectedIdType.description,
+            typeID: selectedDoc.typeID,
+            description: selectedDoc.description,
             url: '',
-        };
+        } as any;
+
+        // Replace if already exists otherwise append
+        const existingDocIndex = files.findIndex(
+            (file) => Number(file.typeID) === Number(selectedDoc.typeID)
+        );
+        let updatedFiles: any[] = [];
         if (existingDocIndex !== -1) {
-            const updatedFiles = [...files];
-            updatedFiles.splice(existingDocIndex, 1, DocPayload); // Replace existing object
-            setFiles(updatedFiles);
+            updatedFiles = [...files];
+            updatedFiles.splice(existingDocIndex, 1, DocPayload);
         } else {
-            setFiles((prev) => [...prev, DocPayload]);
+            updatedFiles = [...files, DocPayload];
         }
 
+        setFiles(updatedFiles);
         clearData();
-        setHandleFileChangeCalled(true); // Set the flag to prevent useEffect from running
+        setHandleFileChangeCalled(true); // prevent overwriting from uploadedFiles effect
+
+        // auto-advance to next missing required document
+        const nextMissingIndex = getRequiredDocuments.findIndex(
+            (doc) =>
+                !updatedFiles.some(
+                    (f) => Number(f.typeID) === Number(doc.typeID)
+                )
+        );
+        if (nextMissingIndex === -1) {
+            // all uploaded
+            setCurrentIndex(getRequiredDocuments.length);
+        } else {
+            setCurrentIndex(nextMissingIndex);
+        }
     };
 
     const removeFile = (id: number) => {
         const filtered = files.filter((el) => el.typeID !== id);
         setFiles(filtered);
         setHandleFileChangeCalled(true);
+
+        // move the current index to the removed document so user can re-upload if needed
+        const docIndex = getRequiredDocuments.findIndex(
+            (d) => Number(d.typeID) === Number(id)
+        );
+        if (docIndex !== -1) setCurrentIndex(docIndex);
     };
 
     const getRequiredDocuments = useMemo(() => {
@@ -127,6 +137,11 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                 fileType.typeID
         );
     }, [fileTypes, states?.activeAccount]);
+
+    // the currently selected required document the user should upload
+    const selectedDoc = useMemo(() => {
+        return getRequiredDocuments[currentIndex] ?? null;
+    }, [getRequiredDocuments, currentIndex]);
 
     const validateRequiredFiles = () => {
         const requiredDocs = getRequiredDocuments;
@@ -151,10 +166,7 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
 
         setShowMessage('');
         const formData = new FormData();
-        if (!typeIDs?.length) {
-            toast.error('No file type selected');
-            return;
-        }
+        // Ensure there is at least one new file to upload
         const filteredFiles = files.filter((file: CustomFile) => {
             return !file?.url;
         });
@@ -334,79 +346,49 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                     <section className="lg:w-4/6 mr-auto">
                         <div className="flex gap-5 items-start">
                             <div className="flex-1">
-                                <Select
-                                    className="bg-white"
-                                    selectDivClassName="bg-white"
-                                    disabled={isLoadingData || hasError}
-                                    onChange={(
-                                        e: ChangeEvent<HTMLSelectElement>
-                                    ) => {
-                                        const selectedTypeID: any[] = [];
-                                        setIdType(e.target.value);
-                                        const selectedOption =
-                                            e.target.selectedOptions[0];
-                                        if (selectedOption) {
-                                            selectedTypeID.push(
-                                                selectedOption.getAttribute(
-                                                    'data-id'
-                                                )
-                                            );
-                                        }
-                                        setTypeIDs(selectedTypeID);
-                                    }}
-                                >
-                                    <option value="">
-                                        {isLoadingData
-                                            ? 'Loading...'
-                                            : 'Select Document Type'}
-                                    </option>
-                                    {fileTypeOptions.length > 0 ? (
-                                        fileTypeOptions.map((ftype, i) => (
-                                            <option
-                                                key={i}
-                                                value={ftype.id}
-                                                data-id={ftype?.typeID}
-                                            >
-                                                {ftype.name}
-                                            </option>
-                                        ))
-                                    ) : !isLoadingData ? (
-                                        <option disabled>
-                                            No document types available
-                                        </option>
-                                    ) : null}
-                                </Select>
-                                {Number(selectedIdType?.askForDocID) > 0 && (
-                                    <Input
-                                        placeholder="Enter ID number"
-                                        className="bg-white"
-                                        inputClassName="bg-white"
-                                        value={idNumber}
-                                        onChange={(e) =>
-                                            setIdNumber(e.target.value)
-                                        }
-                                        onFocus={() => setShowError(false)}
-                                        error={
-                                            showError && {
-                                                message:
-                                                    'Number on ID is required',
+                                <div className="p-4 bg-white rounded border">
+                                    <h3 className="font-semibold">
+                                        {selectedDoc
+                                            ? selectedDoc.name
+                                            : 'All required documents uploaded'}
+                                    </h3>
+                                    {selectedDoc && (
+                                        <p className="text-sm text-gray-600 mt-2">
+                                            {selectedDoc.description}
+                                        </p>
+                                    )}
+                                    {selectedDoc?.askForDocID === 1 && (
+                                        <Input
+                                            placeholder="Enter ID number"
+                                            className="bg-white mt-3"
+                                            inputClassName="bg-white"
+                                            value={idNumber}
+                                            onChange={(e) =>
+                                                setIdNumber(e.target.value)
                                             }
-                                        }
-                                    />
-                                )}
+                                            onFocus={() => setShowError(false)}
+                                            error={
+                                                showError && {
+                                                    message:
+                                                        'Number on ID is required',
+                                                }
+                                            }
+                                        />
+                                    )}
+                                </div>
                             </div>
                             <input
                                 ref={imageRef}
                                 type="file"
-                                accept={selectedIdType?.expectedMimes
-                                    .map((mime) => `.${mime}`)
+                                accept={selectedDoc?.expectedMimes
+                                    ?.map((mime: string) => `.${mime}`)
                                     .join(',')}
                                 className="opacity-0 invisible w-1"
                                 onChange={handleFileChange}
                             />
                             <Button
                                 type="button"
-                                disabled={!selectedIdType}
+                                disabled={!selectedDoc}
                                 className="relative mt-3 disabled:bg-blue-500"
                                 onClick={onPickImage}
                             >
