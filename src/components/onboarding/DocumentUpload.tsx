@@ -71,11 +71,18 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
         const fileList = e.target.files as FileList;
         if (!fileList || fileList.length === 0) return;
 
+        // Check if file is an image
+        const file = fileList[0];
+        if (!file.type.startsWith('image/')) {
+            toast.error('Please select an image file only (JPG, PNG, etc.)');
+            return;
+        }
+
         // Check file size - limit to 1MB (1,048,576 bytes)
         const maxSizeInBytes = 1024 * 1024; // 1MB
-        if (fileList[0].size > maxSizeInBytes) {
+        if (file.size > maxSizeInBytes) {
             toast.error(
-                'File size must be under 1MB. Please select a smaller file.'
+                'Image size must be under 1MB. Please select a smaller image.'
             );
             return;
         }
@@ -343,16 +350,27 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                             </button>
                         </div>
                     )}
-                    <ul className="list-disc mb-10 ml-5">
-                        <h2 className="font-semibold -ml-5">
-                            You are required to submit these documents
+                    <div className="mb-10 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h2 className="font-semibold text-blue-800 mb-3">
+                            📸 Upload Document Images
                         </h2>
-                        <li>
-                            A copy of your NIN, International passport,
-                            Voter&apos;s card or Driver&apos;s license{' '}
-                        </li>
-                        <li>Your utility bill</li>
-                    </ul>
+                        <p className="text-blue-700 mb-3">
+                            Please take clear photos or scan images of your
+                            documents. We only accept image files (JPG, PNG,
+                            etc.) under 1MB.
+                        </p>
+                        <ul className="list-disc ml-5 text-blue-700">
+                            <li>
+                                A clear image of your NIN, International
+                                passport, Voter's card or Driver's license
+                            </li>
+                            <li>An image of your utility bill</li>
+                        </ul>
+                        <p className="text-sm text-blue-600 mt-2">
+                            💡 Tip: Ensure documents are well-lit and all text
+                            is clearly readable
+                        </p>
+                    </div>
                     <section className="lg:w-4/6 mr-auto">
                         <div className="flex gap-5 items-start">
                             <div className="flex-1">
@@ -390,9 +408,7 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                             <input
                                 ref={imageRef}
                                 type="file"
-                                accept={selectedDoc?.expectedMimes
-                                    ?.map((mime: string) => `.${mime}`)
-                                    .join(',')}
+                                accept="image/*"
                                 className="opacity-0 invisible w-1"
                                 onChange={handleFileChange}
                             />
@@ -402,7 +418,7 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                                 className="relative mt-3 disabled:bg-blue-500"
                                 onClick={onPickImage}
                             >
-                                Upload File
+                                Upload Image
                             </Button>
                         </div>
                         <div className="flex flex-col flex-1 mt-5 min-h-[200px] pb-10 bg-white rounded-md border border-gray-300">
