@@ -70,6 +70,16 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const fileList = e.target.files as FileList;
         if (!fileList || fileList.length === 0) return;
+
+        // Check file size - limit to 1MB (1,048,576 bytes)
+        const maxSizeInBytes = 1024 * 1024; // 1MB
+        if (fileList[0].size > maxSizeInBytes) {
+            toast.error(
+                'File size must be under 1MB. Please select a smaller file.'
+            );
+            return;
+        }
+
         const preview = URL.createObjectURL(fileList[0]);
 
         const selectedDoc = getRequiredDocuments[currentIndex];
