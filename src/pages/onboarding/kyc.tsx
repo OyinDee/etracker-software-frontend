@@ -157,13 +157,24 @@ export default function KycOnboarding() {
         }
     }, [states?.activeAccount]);
 
-    if (states?.user?.isUserVerified) {
-        router.replace('/dashboard');
-    }
+    // Redirect users with completed KYC to dashboard
+    useEffect(() => {
+        const currentKyc = states?.user?.currentKyc;
+
+        // If user has completed KYC, redirect to dashboard
+        if (currentKyc && currentKyc.status === 'COMPLETE') {
+            console.log('KYC is complete, redirecting to dashboard');
+            router.replace('/dashboard');
+        }
+    }, [states?.user?.currentKyc?.status, router]);
 
     console.log('KYC Page - Current step:', step);
     console.log('KYC Page - Active account:', states?.activeAccount);
     console.log('KYC Page - User:', states?.user);
+    console.log(
+        'KYC Page - Current KYC status:',
+        states?.user?.currentKyc?.status
+    );
 
     return (
         <section className="">

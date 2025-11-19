@@ -77,32 +77,46 @@ export const goBackToKyc = (
 };
 
 export const goBackToKyc2 = (states: any, router?: NextRouter) => {
-    if (
-        states?.activeKyc &&
-        states?.activeKyc?.status === KycStatus.INCOMPLETE
-    ) {
-        if (router) {
-            // states?.setScreen(screen as OpenScreen);
-            states?.setScreen('kyc');
-            router.push('/onboarding/kyc');
-            return false;
-        }
-    } else if (
-        states?.activeKyc && // come back here
-        states?.activeKyc?.status === KycStatus.COMPLETE &&
-        states?.isNotApprovedOrPending === false
-    ) {
-        if (router) {
-            states?.setScreen('awaitApproval');
-            return false;
-        }
-        return true;
-    } else {
+    // If no activeKyc or no status, allow navigation
+    if (!states?.activeKyc || !states?.activeKyc?.status) {
         if (router) {
             states?.setScreen('');
         }
         return true;
     }
+
+    const kycStatus = states.activeKyc.status;
+
+    // If KYC is INCOMPLETE, redirect to KYC page
+    if (kycStatus === KycStatus.INCOMPLETE) {
+        if (router) {
+            states?.setScreen('kyc');
+            router.push('/onboarding/kyc');
+        }
+        return false;
+    }
+
+    // If KYC is COMPLETE or APPROVED, allow navigation
+    if (kycStatus === KycStatus.COMPLETE || kycStatus === KycStatus.APRROVED) {
+        if (router) {
+            states?.setScreen('');
+        }
+        return true;
+    }
+
+    // If KYC is PENDING, show await approval message but don't navigate
+    if (kycStatus === KycStatus.PENDING) {
+        if (router) {
+            states?.setScreen('awaitApproval');
+        }
+        return false;
+    }
+
+    // For any other status (REJECTED, etc.), allow navigation with cleared screen
+    if (router) {
+        states?.setScreen('');
+    }
+    return true;
 };
 
 export const switchAccount = (

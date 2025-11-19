@@ -73,11 +73,29 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
     const [selectedState, setSelectedState] = useState('');
     const [lgas, setLgas] = useState<string[]>([]);
 
+    // Watch the state field for changes
+    const watchState = watch('state');
+
+    // Load cities when state changes programmatically
+    useEffect(() => {
+        if (watchState && watchState !== selectedState) {
+            setSelectedState(watchState);
+            setLgas(
+                statesAndLgas[watchState as keyof typeof statesAndLgas] || []
+            );
+        }
+    }, [watchState, selectedState]);
+
     const handleStateChange = (event: { target: { value: any } }) => {
         const state = event.target.value;
         setSelectedState(state);
+        setValue('state', state); // Update form value
 
+        // Load cities/LGAs for the selected state
         setLgas(statesAndLgas[state as keyof typeof statesAndLgas] || []);
+
+        // Clear city selection when state changes
+        setValue('city', '');
     };
 
     const onSubmit = async (data: any) => {
@@ -314,6 +332,16 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
             Object.entries(defaultValues).forEach(([key, value]) => {
                 setValue(key, value);
             });
+
+            // Load cities/LGAs for the property's state
+            if (property?.location?.state) {
+                setSelectedState(property.location.state);
+                setLgas(
+                    statesAndLgas[
+                        property.location.state as keyof typeof statesAndLgas
+                    ] || []
+                );
+            }
         }
     }, [getMyProperties?.data?.data, handleDrop, page, setValue]);
 

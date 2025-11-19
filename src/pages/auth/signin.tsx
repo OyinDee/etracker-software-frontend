@@ -66,7 +66,7 @@ function Signin() {
         {
             onSuccess(data: GenericResponse<any>) {
                 setIsError(false);
-                setShowMessage(data?.message + '! you can login');
+                setShowMessage('Successful, you can login now!');
                 router.push('/auth/signin');
             },
             onError(error: any) {
