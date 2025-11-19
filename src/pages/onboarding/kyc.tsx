@@ -166,7 +166,7 @@ export default function KycOnboarding() {
             console.log('KYC is complete, redirecting to dashboard');
             router.replace('/dashboard');
         }
-    }, [states?.user?.currentKyc?.status, router]);
+    }, [states?.user?.currentKyc, router]);
 
     console.log('KYC Page - Current step:', step);
     console.log('KYC Page - Active account:', states?.activeAccount);

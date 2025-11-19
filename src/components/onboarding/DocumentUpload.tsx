@@ -362,7 +362,8 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                         <ul className="list-disc ml-5 text-blue-700">
                             <li>
                                 A clear image of your NIN, International
-                                passport, Voter's card or Driver's license
+                                passport, Voter&apos;s card or Driver&apos;s
+                                license
                             </li>
                             <li>An image of your utility bill</li>
                         </ul>
