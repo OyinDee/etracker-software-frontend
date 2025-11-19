@@ -25,7 +25,14 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
     }, []);
 
     const handlePayment = async () => {
+        console.log('=== SUBSCRIPTION PAYMENT INITIATED ===');
+        console.log('Email:', email);
+        console.log('User Email Prop:', userEmail);
+        console.log('API URL:', API_URL);
+        console.log('Full endpoint:', `${API_URL}/payment/subscribe`);
+
         if (!email) {
+            console.error('Email validation failed: Email is empty');
             setError('Email is required');
             return;
         }
@@ -34,45 +41,102 @@ const Subscription = ({ userEmail = '', onSuccess = () => {} }) => {
         setError(null);
 
         try {
+            console.log('Sending POST request to subscribe endpoint...');
+            console.log('Request payload:', { email });
+
             const response = await axios.post(`${API_URL}/payment/subscribe`, {
                 email,
             });
 
+            console.log('✅ Subscribe API Response:', response);
+            console.log('Response status:', response.status);
+            console.log('Response data:', response.data);
+
             const { authorization_url, reference, access_code } = response.data;
 
+            console.log('Extracted values:', {
+                authorization_url,
+                reference,
+                access_code,
+            });
+            console.log('Extracted values:', {
+                authorization_url,
+                reference,
+                access_code,
+            });
+
             if (paystackLoaded && authorization_url) {
+                console.log('Paystack loaded, opening payment modal...');
+                console.log(
+                    'Paystack Public Key:',
+                    process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+                );
+
                 const paystackOptions = {
                     key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY,
                     email: userEmail,
                     amount: 10000 * 100,
                     ref: reference,
                     callback: (response) => {
+                        console.log('💳 Paystack callback response:', response);
                         if (response.reference === reference) {
+                            console.log('✅ Payment verified successfully!');
                             toast.success('Subscription successful!');
                             onSuccess();
                         } else {
+                            console.error(
+                                '❌ Payment verification failed - Reference mismatch'
+                            );
+                            console.error(
+                                'Expected:',
+                                reference,
+                                'Got:',
+                                response.reference
+                            );
                             toast.error(
                                 'Payment verification failed. Please contact support.'
                             );
                         }
                     },
                     onClose: () => {
+                        console.log('ℹ️ Payment window closed by user');
                         toast('Payment window closed', { icon: 'ℹ️' });
                     },
                 };
 
+                console.log('Paystack options:', paystackOptions);
                 const handler = window.PaystackPop.setup(paystackOptions);
                 handler.openIframe();
             } else {
+                console.error(
+                    '❌ Payment processor not ready or no authorization URL'
+                );
+                console.error('Paystack loaded:', paystackLoaded);
+                console.error('Authorization URL:', authorization_url);
                 toast.error('Payment processor not ready. Please try again.');
             }
         } catch (error) {
-            console.error('Payment Error:', error);
-            setError(
-                error.response?.data?.message || 'Payment initialization failed'
-            );
-            toast.error('Payment failed. Please try again.');
+            console.error('=== SUBSCRIPTION PAYMENT ERROR ===');
+            console.error('Error object:', error);
+            console.error('Error message:', error.message);
+            console.error('Error response:', error.response);
+            console.error('Error response status:', error.response?.status);
+            console.error('Error response data:', error.response?.data);
+            console.error('Error response headers:', error.response?.headers);
+
+            const errorMessage =
+                error.response?.data?.message ||
+                error.response?.data?.error ||
+                error.message ||
+                'Payment initialization failed';
+
+            console.error('Displayed error message:', errorMessage);
+            setError(errorMessage);
+            toast.error(`Payment failed: ${errorMessage}`);
         } finally {
+            console.log(
+                'Payment request completed, setting isLoading to false'
+            );
             setIsLoading(false);
         }
     };
