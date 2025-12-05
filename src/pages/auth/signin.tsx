@@ -162,6 +162,18 @@ function Signin() {
             states?.setStartKycScreen && states?.setStartKycScreen('');
             reset();
 
+            // Handle unverified email case
+            if (
+                response?.message?.includes('verification') ||
+                !response?.data?.user
+            ) {
+                setShowMessage(
+                    response?.message ||
+                        'Please verify your email to continue. Check your inbox for the verification link.'
+                );
+                return;
+            }
+
             if (response?.data) {
                 const { user, tokens } = response.data;
                 // Update user state with KYC information
