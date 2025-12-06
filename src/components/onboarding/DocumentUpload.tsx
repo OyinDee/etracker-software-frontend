@@ -118,20 +118,6 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
         setFiles(updatedFiles);
         clearData();
         setHandleFileChangeCalled(true); // prevent overwriting from uploadedFiles effect
-
-        // auto-advance to next missing required document
-        const nextMissingIndex = getRequiredDocuments.findIndex(
-            (doc) =>
-                !updatedFiles.some(
-                    (f) => Number(f.typeID) === Number(doc.typeID)
-                )
-        );
-        if (nextMissingIndex === -1) {
-            // all uploaded
-            setCurrentIndex(getRequiredDocuments.length);
-        } else {
-            setCurrentIndex(nextMissingIndex);
-        }
     };
 
     const removeFile = (id: number) => {
@@ -289,53 +275,84 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                 <>
                     <div className="mb-10 p-4 bg-gray-50 rounded-lg">
                         <h2 className="font-semibold text-lg mb-4">
-                            Required Documents
+                            Select Document to Upload
                         </h2>
-                        <ul className="space-y-2">
-                            {getRequiredDocuments.map((doc) => {
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {getRequiredDocuments.map((doc, index) => {
                                 const isUploaded = files.some(
                                     (file) =>
                                         Number(file?.id) === Number(doc.typeID)
                                 );
+                                const isSelected = currentIndex === index;
                                 return (
-                                    <li
+                                    <div
                                         key={doc.id}
-                                        className="flex items-center"
+                                        className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                                            isSelected
+                                                ? 'border-blue-500 bg-blue-50'
+                                                : isUploaded
+                                                ? 'border-green-500 bg-green-50'
+                                                : 'border-gray-300 bg-white hover:border-gray-400'
+                                        }`}
+                                        onClick={() => setCurrentIndex(index)}
                                     >
-                                        <span
-                                            className={`w-5 h-5 mr-2 flex items-center justify-center rounded-full ${
-                                                isUploaded
-                                                    ? 'bg-green-500 text-white'
-                                                    : 'bg-gray-200'
-                                            }`}
-                                        >
-                                            {isUploaded
-                                                ? '✓'
-                                                : getRequiredDocuments.indexOf(
-                                                      doc
-                                                  ) + 1}
-                                        </span>
-                                        <span
-                                            className={
-                                                isUploaded
-                                                    ? 'text-gray-500 line-through'
-                                                    : ''
-                                            }
-                                        >
-                                            {doc.name}{' '}
-                                            {doc.askForDocID === 1
-                                                ? '(with ID number)'
-                                                : ''}
-                                        </span>
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center mb-2">
+                                                    <span
+                                                        className={`w-6 h-6 mr-3 flex items-center justify-center rounded-full text-sm font-medium ${
+                                                            isUploaded
+                                                                ? 'bg-green-500 text-white'
+                                                                : isSelected
+                                                                ? 'bg-blue-500 text-white'
+                                                                : 'bg-gray-200 text-gray-600'
+                                                        }`}
+                                                    >
+                                                        {isUploaded
+                                                            ? '✓'
+                                                            : index + 1}
+                                                    </span>
+                                                    <h3
+                                                        className={`font-medium ${
+                                                            isSelected
+                                                                ? 'text-blue-700'
+                                                                : 'text-gray-800'
+                                                        }`}
+                                                    >
+                                                        {doc.name}
+                                                    </h3>
+                                                </div>
+                                                <p className="text-sm text-gray-600 ml-9">
+                                                    {doc.description}
+                                                    {doc.askForDocID === 1 &&
+                                                        ' (ID number required)'}
+                                                </p>
+                                            </div>
+                                            {isSelected && (
+                                                <div className="ml-2 text-blue-500">
+                                                    <svg
+                                                        className="w-5 h-5"
+                                                        fill="currentColor"
+                                                        viewBox="0 0 20 20"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                                            clipRule="evenodd"
+                                                        />
+                                                    </svg>
+                                                </div>
+                                            )}
+                                        </div>
                                         {isUploaded && (
-                                            <span className="ml-2 text-sm text-green-600">
-                                                (Uploaded)
-                                            </span>
+                                            <div className="mt-2 text-sm text-green-600 font-medium">
+                                                ✓ Uploaded
+                                            </div>
                                         )}
-                                    </li>
+                                    </div>
                                 );
                             })}
-                        </ul>
+                        </div>
                     </div>
 
                     {!!showMessage && (
@@ -373,54 +390,68 @@ export const DocumentUpload: FC<DocumentFormProps> = ({ page }) => {
                         </p>
                     </div>
                     <section className="lg:w-4/6 mr-auto">
-                        <div className="flex gap-5 items-start">
-                            <div className="flex-1">
-                                <div className="p-4 bg-white rounded border">
-                                    <h3 className="font-semibold">
-                                        {selectedDoc
-                                            ? selectedDoc.name
-                                            : 'All required documents uploaded'}
-                                    </h3>
-                                    {selectedDoc && (
-                                        <p className="text-sm text-gray-600 mt-2">
-                                            {selectedDoc.description}
-                                        </p>
-                                    )}
+                        <div className="bg-white border border-gray-300 rounded-lg p-6 mb-6">
+                            <h3 className="font-semibold text-lg mb-4">
+                                {selectedDoc
+                                    ? `Uploading: ${selectedDoc.name}`
+                                    : 'Select a document type above to upload'}
+                            </h3>
+                            {selectedDoc ? (
+                                <div>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        {selectedDoc.description}
+                                    </p>
                                     {selectedDoc?.askForDocID === 1 && (
-                                        <Input
-                                            placeholder="Enter ID number"
-                                            className="bg-white mt-3"
-                                            inputClassName="bg-white"
-                                            value={idNumber}
-                                            onChange={(e) =>
-                                                setIdNumber(e.target.value)
-                                            }
-                                            onFocus={() => setShowError(false)}
-                                            error={
-                                                showError && {
-                                                    message:
-                                                        'Number on ID is required',
+                                        <div className="mb-4">
+                                            <Input
+                                                placeholder="Enter ID number"
+                                                className="bg-white"
+                                                inputClassName="bg-white"
+                                                value={idNumber}
+                                                onChange={(e) =>
+                                                    setIdNumber(e.target.value)
                                                 }
-                                            }
-                                        />
+                                                onFocus={() =>
+                                                    setShowError(false)
+                                                }
+                                                error={
+                                                    showError && {
+                                                        message:
+                                                            'Number on ID is required',
+                                                    }
+                                                }
+                                            />
+                                        </div>
                                     )}
+                                    <div className="flex gap-4">
+                                        <input
+                                            ref={imageRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="opacity-0 invisible w-1"
+                                            onChange={handleFileChange}
+                                        />
+                                        <Button
+                                            type="button"
+                                            className="px-6 py-2"
+                                            onClick={onPickImage}
+                                        >
+                                            {files.some(
+                                                (f) =>
+                                                    Number(f.typeID) ===
+                                                    Number(selectedDoc.typeID)
+                                            )
+                                                ? 'Replace Image'
+                                                : 'Upload Image'}
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                            <input
-                                ref={imageRef}
-                                type="file"
-                                accept="image/*"
-                                className="opacity-0 invisible w-1"
-                                onChange={handleFileChange}
-                            />
-                            <Button
-                                type="button"
-                                disabled={!selectedDoc}
-                                className="relative mt-3 disabled:bg-blue-500"
-                                onClick={onPickImage}
-                            >
-                                Upload Image
-                            </Button>
+                            ) : (
+                                <p className="text-gray-500">
+                                    Click on any document type above to start
+                                    uploading.
+                                </p>
+                            )}
                         </div>
                         <div className="flex flex-col flex-1 mt-5 min-h-[200px] pb-10 bg-white rounded-md border border-gray-300">
                             {loadinguploadFiles ? (
