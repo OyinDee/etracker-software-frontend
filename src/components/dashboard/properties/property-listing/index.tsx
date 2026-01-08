@@ -58,7 +58,7 @@ const Property: FC<PropertyProp> = ({ properties }) => {
         // Then apply other filters
         if (filterDetails) {
             // @ts-ignore
-            const { state, propertyActive, apartmentType } = filterDetails;
+            const { state, propertyActive, propertyType } = filterDetails;
 
             filtered = filtered.filter((property: Property) => {
                 if (
@@ -82,11 +82,11 @@ const Property: FC<PropertyProp> = ({ properties }) => {
                 }
 
                 if (
-                    apartmentType &&
-                    property.apartmentType &&
-                    !property.apartmentType
+                    propertyType &&
+                    (property.propertyType || property.apartmentType) &&
+                    !(property.propertyType || property.apartmentType)
                         .toLowerCase()
-                        .includes(apartmentType.toLowerCase())
+                        .includes(propertyType.toLowerCase())
                 ) {
                     return false;
                 }

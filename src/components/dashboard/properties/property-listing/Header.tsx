@@ -54,7 +54,7 @@ const Header = ({ propertyCount }: { propertyCount?: number }) => {
         const filterDetails = {
             state: selectedFilter?.state,
             propertyActive: selectedFilter?.propertyActive,
-            apartmentType: selectedFilter?.apartmentType,
+            propertyType: selectedFilter?.propertyType,
         };
 
         localStorage.setItem('filterDetails', JSON.stringify(filterDetails));
@@ -79,7 +79,17 @@ const Header = ({ propertyCount }: { propertyCount?: number }) => {
 
     const filterOptions = {
         propertyActives: ['Active', 'Off Market'],
-        apartmentTypes: ['Flat', 'Duplex'],
+        propertyTypes: {
+            Apartments: ['Flat', 'Studio', 'Penthouse', 'Loft'],
+            'Landed Properties': [
+                'Bungalow',
+                'Duplex',
+                'Terrace/Townhouse',
+                'Mansion',
+                'Land',
+            ],
+            Commercial: ['Office', 'Shop', 'Warehouse', 'Hotel/Lodge'],
+        },
     };
 
     const clearFilterDetails = () => {
@@ -294,32 +304,39 @@ const Header = ({ propertyCount }: { propertyCount?: number }) => {
                             </div>
                             <div>
                                 <label
-                                    htmlFor="apartmentTypeFilter"
+                                    htmlFor="propertyTypeFilter"
                                     className="block mb-1"
                                 >
-                                    Apartment Type:
+                                    Property Type:
                                 </label>
                                 <select
-                                    id="apartmentTypeFilter"
+                                    id="propertyTypeFilter"
                                     className="border border-gray-300 rounded px-3 py-2 w-full"
-                                    value={selectedFilter?.apartmentType}
+                                    value={selectedFilter?.propertyType}
                                     onChange={(e) =>
                                         handleFilterSelect(
-                                            'apartmentType',
+                                            'propertyType',
                                             e.target.value
                                         )
                                     }
                                 >
                                     <option value="">
-                                        Select Apartment Type
+                                        Select Property Type
                                     </option>
-                                    {filterOptions.apartmentTypes.map(
-                                        (type) => (
-                                            <option key={type} value={type}>
-                                                {type}
-                                            </option>
-                                        )
-                                    )}
+                                    {Object.entries(
+                                        filterOptions.propertyTypes
+                                    ).map(([category, types]) => (
+                                        <optgroup
+                                            key={category}
+                                            label={category}
+                                        >
+                                            {types.map((type) => (
+                                                <option key={type} value={type}>
+                                                    {type}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
                                 </select>
                             </div>
                         </div>
