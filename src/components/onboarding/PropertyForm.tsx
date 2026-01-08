@@ -23,18 +23,61 @@ import { useRouter } from 'next/router';
 import { getSubscriptionStatus } from 'utils/subscriptionUtils';
 type ImageList = Array<{ base64: string; preview: string }>;
 
-const schema = yup.object({
+const propertyTypes = {
+    Apartments: ['Flat', 'Studio', 'Penthouse', 'Loft'],
+    'Landed Properties': [
+        'Bungalow',
+        'Duplex',
+        'Detached House',
+        'Semi-Detached',
+        'Terraced House',
+        'Mansion',
+        'Villa',
+        'Land',
+    ],
+    Commercial: ['Office', 'Shop', 'Warehouse'],
+};
+
+const landedPropertyTypes = [
+    'Bungalow',
+    'Duplex',
+    'Detached House',
+    'Semi-Detached',
+    'Terraced House',
+    'Mansion',
+    'Villa',
+    'Land',
+];
+
+const schema = yup.object().shape({
     name: yup.string().required('Enter property name'),
     address: yup.string().required('Enter your address'),
     description: yup.string().required('Enter description'),
     price: yup.number().required('Enter price'),
-    numberOfRooms: yup.string().required('Enter number of bedroom'),
-    numberOfBath: yup.string().required('Enter number of bath'),
+    numberOfRooms: yup.string().when('propertyType', {
+        is: (val: string) => val !== 'Land',
+        then: () => yup.string().required('Enter number of bedroom'),
+        otherwise: () => yup.string().notRequired(),
+    }),
+    numberOfBath: yup.string().when('propertyType', {
+        is: (val: string) => val !== 'Land',
+        then: () => yup.string().required('Enter number of bath'),
+        otherwise: () => yup.string().notRequired(),
+    }),
     state: yup.string().required('Select state'),
     city: yup.string().required('Select city'),
-    status: yup.string().required('Enter property type'),
-    agreementEstimate: yup.string().required('Enter property type'),
-    apartmentType: yup.string().required('Enter property type'),
+    status: yup.string().required('Select property status'),
+    agreementEstimate: yup.number().required('Enter agreement estimate'),
+    propertyType: yup.string().required('Select property type'),
+    landSize: yup.object().when('propertyType', {
+        is: (val: string) => landedPropertyTypes.includes(val),
+        then: () =>
+            yup.object().shape({
+                value: yup.number().required('Enter land size'),
+                unit: yup.string().required('Select land size unit'),
+            }),
+        otherwise: () => yup.object().notRequired(),
+    }),
 });
 
 interface PropertyProps {
@@ -43,6 +86,7 @@ interface PropertyProps {
 
 const PropertyForm: FC<PropertyProps> = ({ page }) => {
     const [images, setImages] = useState<ImageList>([]);
+    const [selectedPropertyType, setSelectedPropertyType] = useState('');
     const states = useAppStore();
     const router = useRouter();
 
@@ -73,8 +117,9 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
     const [selectedState, setSelectedState] = useState('');
     const [lgas, setLgas] = useState<string[]>([]);
 
-    // Watch the state field for changes
+    // Watch the state and property type fields for changes
     const watchState = watch('state');
+    const watchPropertyType = watch('propertyType');
 
     // Load cities when state changes programmatically
     useEffect(() => {
@@ -85,6 +130,18 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
             );
         }
     }, [watchState, selectedState]);
+
+    // Handle property type changes
+    useEffect(() => {
+        if (watchPropertyType && watchPropertyType !== selectedPropertyType) {
+            setSelectedPropertyType(watchPropertyType);
+            // Clear rooms and baths if Land is selected
+            if (watchPropertyType === 'Land') {
+                setValue('numberOfRooms', '');
+                setValue('numberOfBath', '');
+            }
+        }
+    }, [watchPropertyType, selectedPropertyType, setValue]);
 
     const handleStateChange = (event: { target: { value: any } }) => {
         const state = event.target.value;
@@ -150,14 +207,22 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
             ...newProperty,
             name: data?.name,
             price: data?.price,
-            number_of_bedrooms: data?.numberOfRooms,
-            number_of_bath: data?.numberOfBath,
+            number_of_bedrooms:
+                data?.numberOfRooms ||
+                (data?.propertyType === 'Land' ? 0 : data?.numberOfRooms),
+            number_of_bath:
+                data?.numberOfBath ||
+                (data?.propertyType === 'Land' ? 0 : data?.numberOfBath),
             address: data?.address,
             status: data?.status,
             description: data?.description,
             city: data?.city,
             state: data?.state,
-            apartmentType: data?.apartmentType,
+            propertyType: data?.propertyType,
+            agreement_estimate: data?.agreementEstimate,
+            land_size: landedPropertyTypes.includes(data?.propertyType)
+                ? data?.landSize
+                : undefined,
             ...kycStage,
             ...category,
             year_built: 2023,
@@ -308,7 +373,10 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
                 city: property?.location?.city,
                 state: property?.location?.state,
                 year_bullt: property?.year_built,
-                apartmentType: property?.apartmentType,
+                propertyType: property?.propertyType || property?.apartmentType,
+                agreementEstimate:
+                    property?.agreementEstimate || property?.agreement_estimate,
+                landSize: property?.land_size,
             };
             // const imageFile: File[] = [];
             const imageFilePromises = property.image_list.map(
@@ -409,40 +477,102 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
                         ))}
                     </Select>
                     <Select
-                        label="Apartment Type"
-                        placeholder="Select"
+                        label="Property Type"
+                        placeholder="Select Property Type"
                         selectDivClassName="bg-white"
-                        register={{ ...register('apartmentType') }}
-                        error={errors.apartmentType}
+                        register={{ ...register('propertyType') }}
+                        error={errors.propertyType}
                     >
-                        <option value="Flat">Flat</option>
-                        <option value="Duplex">Duplex</option>
+                        <option disabled value="">
+                            Select Property Type
+                        </option>
+                        {Object.entries(propertyTypes).map(
+                            ([category, types]) => (
+                                <optgroup key={category} label={category}>
+                                    {types.map((type) => (
+                                        <option key={type} value={type}>
+                                            {type}
+                                        </option>
+                                    ))}
+                                </optgroup>
+                            )
+                        )}
                     </Select>
-                    <Input
-                        label="Number of Rooms(Maximum of 6 rooms)"
-                        type="number"
-                        min={1}
-                        max={6}
-                        maxLength={6}
-                        required
-                        placeholder="Number of Rooms"
-                        asterisk
-                        register={{ ...register('numberOfRooms') }}
-                        error={errors.numberOfRooms}
-                        inputClassName="bg-white"
-                    />
-                    <Input
-                        label="Number of Bathrooms(Maximum of 6 bathrooms)"
-                        type="number"
-                        min={1}
-                        max={6}
-                        required
-                        placeholder="Number of Bathrooms"
-                        asterisk
-                        register={{ ...register('numberOfBath') }}
-                        error={errors.numberOfBath}
-                        inputClassName="bg-white"
-                    />
+                    {/* Conditional fields based on property type */}
+                    {watchPropertyType !== 'Land' && (
+                        <>
+                            <Input
+                                label="Number of Rooms(Maximum of 6 rooms)"
+                                type="number"
+                                min={1}
+                                max={6}
+                                maxLength={6}
+                                required
+                                placeholder="Number of Rooms"
+                                asterisk
+                                register={{ ...register('numberOfRooms') }}
+                                error={errors.numberOfRooms}
+                                inputClassName="bg-white"
+                            />
+                            <Input
+                                label="Number of Bathrooms(Maximum of 6 bathrooms)"
+                                type="number"
+                                min={1}
+                                max={6}
+                                required
+                                placeholder="Number of Bathrooms"
+                                asterisk
+                                register={{ ...register('numberOfBath') }}
+                                error={errors.numberOfBath}
+                                inputClassName="bg-white"
+                            />
+                        </>
+                    )}
+
+                    {/* Land size fields for landed properties */}
+                    {landedPropertyTypes.includes(watchPropertyType) && (
+                        <>
+                            <Input
+                                label="Land Size"
+                                type="number"
+                                min={0}
+                                required
+                                placeholder="Enter land size"
+                                asterisk
+                                register={{ ...register('landSize.value') }}
+                                error={
+                                    errors.landSize &&
+                                    typeof errors.landSize === 'object' &&
+                                    'value' in errors.landSize
+                                        ? (errors.landSize.value as any)
+                                        : undefined
+                                }
+                                inputClassName="bg-white"
+                            />
+                            <Select
+                                label="Land Size Unit"
+                                placeholder="Select Unit"
+                                selectDivClassName="bg-white"
+                                required
+                                register={{ ...register('landSize.unit') }}
+                                error={
+                                    errors.landSize &&
+                                    typeof errors.landSize === 'object' &&
+                                    'unit' in errors.landSize
+                                        ? (errors.landSize.unit as any)
+                                        : undefined
+                                }
+                            >
+                                <option disabled value="">
+                                    Select Unit
+                                </option>
+                                <option value="sqft">Square Feet</option>
+                                <option value="sqm">Square Meters</option>
+                                <option value="acres">Acres</option>
+                                <option value="hectares">Hectares</option>
+                            </Select>
+                        </>
+                    )}
                     <Input
                         label="Price"
                         required
@@ -454,6 +584,7 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
                     />
                     <Input
                         label="Agreement Estimate"
+                        type="number"
                         required
                         placeholder="Agreement Estimate"
                         asterisk

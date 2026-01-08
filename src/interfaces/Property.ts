@@ -6,8 +6,14 @@ export interface Property {
     price: number;
     location: { city: string; state: string };
     agreementEstimate: number;
+    agreement_estimate?: number;
     status: string;
     apartmentType: string;
+    propertyType?: string;
+    land_size?: {
+        value: number;
+        unit: string;
+    };
     featureList: string[];
     imageList: string;
     createdBy: string;
@@ -34,10 +40,17 @@ export interface PropertySchema {
     description: string;
     city: string;
     state: string;
-    apartmentType: string;
+    apartmentType?: string;
+    propertyType?: string;
+    agreement_estimate?: number;
+    land_size?: {
+        value: number;
+        unit: string;
+    };
     year_built: number | undefined;
     accountType: number | undefined;
-    kycStage: number | undefined;
-    category: string | undefined;
+    kycStage?: number | undefined;
+    category?: string | undefined;
     currentKyc?: CurrentKyc;
+    [key: string]: any;
 }
