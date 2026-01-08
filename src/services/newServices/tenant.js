@@ -1,15 +1,22 @@
 import request from 'umi-request';
-import { API_URL, USER_TOKEN } from '../config/config';
+import { API_URL } from '../config/config';
+import { useBoundStore } from '../../store';
+
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+    const token = useBoundStore.getState().token;
+    return {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': '*',
+        Authorization: `Bearer ${token}`,
+    };
+};
 
 export async function getAllTenants() {
     return request(`${API_URL}/tenants/`, {
         method: 'get',
-        headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': '*',
-            Authorization: USER_TOKEN,
-        },
+        headers: getAuthHeaders(),
     });
 }
 
@@ -21,7 +28,7 @@ export async function getLandlordTenant(landordId) {
                 method: 'get',
                 headers: {
                     'Content-Type': 'application/json',
-                    Authorization: USER_TOKEN,
+                    Authorization: `Bearer ${useBoundStore.getState().token}`,
                 },
             }
         );
@@ -41,7 +48,7 @@ export async function getDefaultTenant(landordId) {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -51,7 +58,7 @@ export async function getAllTenantDefault() {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -61,7 +68,7 @@ export async function getTenantTransactions(tenantId) {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -71,7 +78,7 @@ export async function getTenantFiles(tenantId) {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -81,7 +88,7 @@ export async function getPropertyTenant(propertyId) {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -91,7 +98,7 @@ export async function getPropertyByTenantId(tenantId) {
         method: 'get',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -103,7 +110,7 @@ export async function createTenant(body) {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': '*',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });
@@ -116,7 +123,7 @@ export async function createDefaultTenant(body) {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': '*',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });
@@ -128,7 +135,7 @@ export async function deleteDefaultTenant(tenantId) {
         method: 'delete',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
     });
 }
@@ -138,7 +145,7 @@ export async function updateTenantRating(body, tenantId) {
         method: 'put',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });
@@ -149,7 +156,7 @@ export async function completeTask(tenantId) {
         method: 'put',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         // body: JSON.stringify(body),
     });
@@ -160,7 +167,7 @@ export async function pendingTask(body, tenantId) {
         method: 'put',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });
@@ -173,7 +180,7 @@ export async function deleteTask(tenantId, body) {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': '*',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });
@@ -186,7 +193,7 @@ export async function inviteTenant(body) {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': '*',
-            Authorization: USER_TOKEN,
+            Authorization: `Bearer ${useBoundStore.getState().token}`,
         },
         body: JSON.stringify(body),
     });

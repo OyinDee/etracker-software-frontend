@@ -77,12 +77,12 @@ export default function NotifyTenants() {
             states?.user?.email || ''
         );
 
-        if (subscriptionStatus !== 'active') {
-            toast.error(
-                'You need an active subscription to perform this action.'
-            );
-            return;
-        }
+        // if (subscriptionStatus !== 'active') {
+        //     toast.error(
+        //         'You need an active subscription to perform this action.'
+        //     );
+        //     return;
+        // }
 
         if (messageType === 'phone') {
             toast.error(

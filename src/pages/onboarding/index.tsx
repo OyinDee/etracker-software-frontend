@@ -39,7 +39,7 @@ export default function Onboarding() {
                 router.push('/dashboard');
             }
         }
-    }, [states?.user?.currentKyc?.status, router, states]); // Include all dependencies
+    }, [states?.user?.currentKyc?.status, router]); // Removed states from dependencies to prevent infinite loop
 
     return (
         <section className="bg-brand-bg h-full">

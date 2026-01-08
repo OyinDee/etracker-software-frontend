@@ -132,12 +132,12 @@ export default function VerifyForm() {
         const subscriptionStatus = await getSubscriptionStatus(
             states?.user?.email || ''
         );
-        if (subscriptionStatus !== 'active') {
-            toast.error(
-                'You need an active subscription to perform this action.'
-            );
-            return;
-        }
+        // if (subscriptionStatus !== 'active') {
+        //     toast.error(
+        //         'You need an active subscription to perform this action.'
+        //     );
+        //     return;
+        // }
 
         if (!formState.agreed) {
             toast.error('Please agree to the terms and conditions');
