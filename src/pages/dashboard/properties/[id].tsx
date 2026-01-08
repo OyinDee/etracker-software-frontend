@@ -25,20 +25,85 @@ import TextArea from 'components/base/form/TextArea';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 
-const propertyUpdateSchema = yup.object({
+const propertyTypes = {
+    Apartments: ['Flat', 'Studio', 'Penthouse', 'Loft'],
+    'Landed Properties': [
+        'Bungalow',
+        'Duplex',
+        'Detached House',
+        'Semi-Detached',
+        'Terraced House',
+        'Mansion',
+        'Villa',
+        'Land',
+    ],
+    Commercial: ['Office', 'Shop', 'Warehouse'],
+};
+
+const landedPropertyTypes = [
+    'Bungalow',
+    'Duplex',
+    'Detached House',
+    'Semi-Detached',
+    'Terraced House',
+    'Mansion',
+    'Villa',
+    'Land',
+];
+
+// Helper function to parse land_size if it's a JSON string
+const parseLandSize = (landSize: any) => {
+    if (!landSize) return null;
+    if (typeof landSize === 'string') {
+        try {
+            return JSON.parse(landSize);
+        } catch (error) {
+            console.error('Error parsing land_size:', error);
+            return null;
+        }
+    }
+    return landSize;
+};
+
+// Helper function to get processed property data
+const getProcessedProperty = (property: any) => {
+    if (!property) return null;
+    return {
+        ...property,
+        land_size: parseLandSize(property.land_size),
+        propertyType:
+            property.propertyType ||
+            property.apartmentType ||
+            (property.number_of_bedrooms === 0 && property.number_of_bath === 0
+                ? 'Land'
+                : 'Flat'),
+    };
+};
+
+const propertyUpdateSchema = yup.object().shape({
     name: yup.string().required('Property name is required'),
     price: yup
         .number()
         .positive('Price must be positive')
         .required('Price is required'),
-    number_of_bedrooms: yup
-        .number()
-        .positive('Number of bedrooms must be positive')
-        .required('Number of bedrooms is required'),
-    number_of_bath: yup
-        .number()
-        .positive('Number of bathrooms must be positive')
-        .required('Number of bathrooms is required'),
+    number_of_bedrooms: yup.number().when('propertyType', {
+        is: (val: string) => val !== 'Land',
+        then: () =>
+            yup
+                .number()
+                .positive('Number of bedrooms must be positive')
+                .required('Number of bedrooms is required'),
+        otherwise: () => yup.number().min(0).notRequired(),
+    }),
+    number_of_bath: yup.number().when('propertyType', {
+        is: (val: string) => val !== 'Land',
+        then: () =>
+            yup
+                .number()
+                .positive('Number of bathrooms must be positive')
+                .required('Number of bathrooms is required'),
+        otherwise: () => yup.number().min(0).notRequired(),
+    }),
     address: yup.string().required('Address is required'),
     status: yup
         .string()
@@ -47,9 +112,19 @@ const propertyUpdateSchema = yup.object({
     description: yup.string().required('Description is required'),
     city: yup.string().required('City is required'),
     state: yup.string().required('State is required'),
-    apartmentType: yup.string().required('Apartment type is required'),
+    propertyType: yup.string().required('Property type is required'),
+    apartmentType: yup.string().notRequired(),
     year_built: yup.string().required('Year built is required'),
     is_active: yup.boolean().required('Property status is required'),
+    landSize: yup.object().when('propertyType', {
+        is: (val: string) => landedPropertyTypes.includes(val),
+        then: () =>
+            yup.object().shape({
+                value: yup.number().required('Enter land size'),
+                unit: yup.string().required('Select land size unit'),
+            }),
+        otherwise: () => yup.object().notRequired(),
+    }),
 });
 
 interface DetailsProps {
@@ -101,7 +176,7 @@ export default function PropertyDetails() {
     const [showModal, setShowModal] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const property = getProperty?.data;
+    const property = getProcessedProperty(getProperty?.data);
     const [editable, setEditable] = useState(false);
     const {
         register,
@@ -123,8 +198,13 @@ export default function PropertyDetails() {
             city: '',
             state: '',
             apartmentType: '',
+            propertyType: '',
             year_built: '',
             is_active: true,
+            landSize: {
+                value: 0,
+                unit: '',
+            },
         },
     });
 
@@ -142,6 +222,8 @@ export default function PropertyDetails() {
         },
         year_built: property?.year_built,
         apartmentType: property?.apartmentType,
+        propertyType: property?.propertyType,
+        landSize: property?.land_size,
         is_active: property?.is_active,
     });
 
@@ -166,8 +248,13 @@ export default function PropertyDetails() {
             setValue('city', property.location?.city || '');
             setValue('state', property.location?.state || '');
             setValue('apartmentType', property.apartmentType || '');
+            setValue('propertyType', property.propertyType || '');
             setValue('year_built', property.year_built || '');
             setValue('is_active', property.is_active ?? true);
+            if (property.land_size) {
+                setValue('landSize.value', property.land_size.value || 0);
+                setValue('landSize.unit', property.land_size.unit || '');
+            }
 
             setFormData({
                 name: property?.name,
@@ -269,8 +356,14 @@ export default function PropertyDetails() {
                 id: id,
                 name: data.name,
                 price: Number(data.price),
-                number_of_bedrooms: Number(data.number_of_bedrooms),
-                number_of_bath: Number(data.number_of_bath),
+                number_of_bedrooms:
+                    data.propertyType === 'Land'
+                        ? 0
+                        : Number(data.number_of_bedrooms || 0),
+                number_of_bath:
+                    data.propertyType === 'Land'
+                        ? 0
+                        : Number(data.number_of_bath || 0),
                 address: data.address,
                 status: data.status,
                 description: data.description,
@@ -278,6 +371,10 @@ export default function PropertyDetails() {
                 state: data.state,
                 year_built: data.year_built,
                 apartmentType: data.apartmentType,
+                propertyType: data.propertyType,
+                land_size: landedPropertyTypes.includes(data.propertyType)
+                    ? data.landSize
+                    : undefined,
                 is_active: data.is_active,
             };
 
@@ -345,6 +442,8 @@ export default function PropertyDetails() {
                 },
                 year_built: property?.year_built,
                 apartmentType: property?.apartmentType,
+                propertyType: property?.propertyType,
+                landSize: property?.land_size,
                 is_active: property?.is_active,
             });
 
@@ -684,89 +783,192 @@ export default function PropertyDetails() {
                     </DetailsRowCard>
                     <DetailsRowCard title="Property Information">
                         <div className="w-full">
+                            {/* Only show bedrooms and bathrooms for non-land properties */}
+                            {(property?.propertyType ||
+                                property?.apartmentType) !== 'Land' && (
+                                <div className="lg:flex gap-4 mb-6">
+                                    <DetailsCard
+                                        label="Bedroom space"
+                                        content={
+                                            editable ? (
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    register={register(
+                                                        'number_of_bedrooms'
+                                                    )}
+                                                    error={
+                                                        errors.number_of_bedrooms
+                                                    }
+                                                    inputClassName="bg-white"
+                                                    placeholder="Enter number of bedrooms"
+                                                />
+                                            ) : (
+                                                property?.number_of_bedrooms
+                                            )
+                                        }
+                                    />
+                                    <DetailsCard
+                                        label="Bathrooms"
+                                        content={
+                                            editable ? (
+                                                <Input
+                                                    type="number"
+                                                    min={1}
+                                                    value={
+                                                        formData?.number_of_bath
+                                                    }
+                                                    onChange={(e) =>
+                                                        handleChange(
+                                                            'number_of_bath',
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    inputClassName="bg-white"
+                                                />
+                                            ) : (
+                                                property?.number_of_bath
+                                            )
+                                        }
+                                    />
+                                </div>
+                            )}
+
+                            {/* Show land size for land properties */}
+                            {(property?.propertyType ||
+                                property?.apartmentType) === 'Land' &&
+                                property?.land_size && (
+                                    <div className="lg:flex gap-4 mb-6">
+                                        <DetailsCard
+                                            label="Land Size"
+                                            content={
+                                                editable ? (
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            type="number"
+                                                            min={0}
+                                                            register={register(
+                                                                'landSize.value'
+                                                            )}
+                                                            error={
+                                                                errors.landSize &&
+                                                                typeof errors.landSize ===
+                                                                    'object' &&
+                                                                'value' in
+                                                                    errors.landSize
+                                                                    ? (errors
+                                                                          .landSize
+                                                                          .value as any)
+                                                                    : undefined
+                                                            }
+                                                            inputClassName="bg-white"
+                                                            placeholder="Enter land size"
+                                                        />
+                                                        <Select
+                                                            register={register(
+                                                                'landSize.unit'
+                                                            )}
+                                                            error={
+                                                                errors.landSize &&
+                                                                typeof errors.landSize ===
+                                                                    'object' &&
+                                                                'unit' in
+                                                                    errors.landSize
+                                                                    ? (errors
+                                                                          .landSize
+                                                                          .unit as any)
+                                                                    : undefined
+                                                            }
+                                                            selectDivClassName="bg-white"
+                                                        >
+                                                            <option value="">
+                                                                Select Unit
+                                                            </option>
+                                                            <option value="sqft">
+                                                                Square Feet
+                                                            </option>
+                                                            <option value="sqm">
+                                                                Square Meters
+                                                            </option>
+                                                            <option value="acres">
+                                                                Acres
+                                                            </option>
+                                                            <option value="hectares">
+                                                                Hectares
+                                                            </option>
+                                                        </Select>
+                                                    </div>
+                                                ) : property?.land_size ? (
+                                                    `${property.land_size.value} ${property.land_size.unit}`
+                                                ) : (
+                                                    'N/A'
+                                                )
+                                            }
+                                        />
+                                    </div>
+                                )}
+
+                            {/* Summary row for non-land properties */}
+                            {(property?.propertyType ||
+                                property?.apartmentType) !== 'Land' && (
+                                <div className="lg:flex gap-4 mb-6">
+                                    <DetailsCard
+                                        label="No of rooms"
+                                        content={property?.number_of_bedrooms}
+                                    />
+                                    <DetailsCard
+                                        label="No of baths"
+                                        content={property?.number_of_bath}
+                                    />
+                                </div>
+                            )}
                             <div className="lg:flex gap-4 mb-6">
                                 <DetailsCard
-                                    label="Bedroom space"
-                                    content={
-                                        editable ? (
-                                            <Input
-                                                type="number"
-                                                min={1}
-                                                register={register(
-                                                    'number_of_bedrooms'
-                                                )}
-                                                error={
-                                                    errors.number_of_bedrooms
-                                                }
-                                                inputClassName="bg-white"
-                                                placeholder="Enter number of bedrooms"
-                                            />
-                                        ) : (
-                                            property?.number_of_bedrooms
-                                        )
-                                    }
-                                />
-                                <DetailsCard
-                                    label="Bathrooms"
-                                    content={
-                                        editable ? (
-                                            <Input
-                                                type="number"
-                                                min={1}
-                                                value={formData?.number_of_bath}
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'number_of_bath',
-                                                        e.target.value
-                                                    )
-                                                }
-                                                inputClassName="bg-white"
-                                            />
-                                        ) : (
-                                            property?.number_of_bath
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div className="lg:flex gap-4 mb-6">
-                                <DetailsCard
-                                    label="No of rooms"
-                                    content={property?.number_of_bedrooms}
-                                />
-                                <DetailsCard
-                                    label="No of baths"
-                                    content={property?.number_of_bath}
-                                />
-                            </div>
-                            <div className="lg:flex gap-4 mb-6">
-                                <DetailsCard
-                                    label="Apartment type"
+                                    label="Property Type"
                                     content={
                                         editable ? (
                                             <Select
-                                                value={formData?.apartmentType}
+                                                value={
+                                                    formData?.propertyType ||
+                                                    formData?.apartmentType
+                                                }
                                                 onChange={(e) =>
                                                     handleChange(
-                                                        'apartmentType',
+                                                        'propertyType',
                                                         e.target.value
                                                     )
                                                 }
                                                 selectDivClassName="bg-white"
                                             >
-                                                <option value="Flat">
-                                                    Flat
+                                                <option disabled value="">
+                                                    Select Property Type
                                                 </option>
-                                                <option value="Duplex">
-                                                    Duplex
-                                                </option>
+                                                {Object.entries(
+                                                    propertyTypes
+                                                ).map(([category, types]) => (
+                                                    <optgroup
+                                                        key={category}
+                                                        label={category}
+                                                    >
+                                                        {types.map((type) => (
+                                                            <option
+                                                                key={type}
+                                                                value={type}
+                                                            >
+                                                                {type}
+                                                            </option>
+                                                        ))}
+                                                    </optgroup>
+                                                ))}
                                             </Select>
                                         ) : (
+                                            property?.propertyType ||
                                             property?.apartmentType
                                         )
                                     }
                                 />
                                 <DetailsCard
-                                    label="Property type"
+                                    label="Property Status"
                                     content={property?.status}
                                 />
                             </div>

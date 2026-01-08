@@ -28,7 +28,7 @@ function PropertyHistory({ property }: { property: any }) {
                                 <td className="p-6">{prop.tenantName}</td>
                                 <td className="p-6">{prop.tenantPhone}</td>
                                 <td className="p-6 pr-0">
-                                    {prop.apartmentType}
+                                    {prop.propertyType || prop.apartmentType}
                                 </td>
                             </tr>
                         ))
@@ -38,7 +38,8 @@ function PropertyHistory({ property }: { property: any }) {
                             <td className="p-6">{property.name}</td>
                             <td className="p-6">{property.location.state}</td>
                             <td className="p-6 pr-0">
-                                {property.apartmentType}
+                                {property.propertyType ||
+                                    property.apartmentType}
                             </td>
                         </tr>
                     )}

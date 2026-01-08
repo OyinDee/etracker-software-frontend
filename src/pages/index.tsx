@@ -213,19 +213,56 @@ export default function Home() {
                                                         'Premium Property'}
                                                 </h3>
                                                 <p className="text-gray-600">
-                                                    {properties[0]
-                                                        ?.number_of_bedrooms &&
-                                                        `${properties[0].number_of_bedrooms} beds`}
-                                                    {properties[0]
-                                                        ?.number_of_bath &&
-                                                        ` • ${properties[0].number_of_bath} baths`}
+                                                    {/* Show property type */}
+                                                    {(properties[0]
+                                                        ?.propertyType ||
+                                                        properties[0]
+                                                            ?.apartmentType) &&
+                                                        `${
+                                                            properties[0]
+                                                                ?.propertyType ||
+                                                            properties[0]
+                                                                ?.apartmentType
+                                                        }`}
+                                                    {/* Show beds and baths only for non-land properties */}
+                                                    {(properties[0]
+                                                        ?.propertyType ||
+                                                        properties[0]
+                                                            ?.apartmentType) !==
+                                                        'Land' && (
+                                                        <>
+                                                            {properties[0]
+                                                                ?.number_of_bedrooms &&
+                                                                ` • ${properties[0].number_of_bedrooms} beds`}
+                                                            {properties[0]
+                                                                ?.number_of_bath &&
+                                                                ` • ${properties[0].number_of_bath} baths`}
+                                                        </>
+                                                    )}
+                                                    {/* Show land size for land properties */}
+                                                    {(properties[0]
+                                                        ?.propertyType ||
+                                                        properties[0]
+                                                            ?.apartmentType) ===
+                                                        'Land' &&
+                                                        properties[0]
+                                                            ?.land_size &&
+                                                        ` • ${properties[0].land_size.value} ${properties[0].land_size.unit}`}
+                                                    {/* Show location */}
                                                     {properties[0]?.location
                                                         ?.city &&
                                                         properties[0]?.location
                                                             ?.state &&
                                                         ` • ${properties[0].location.city}, ${properties[0].location.state}`}
-                                                    {!properties[0]
-                                                        ?.number_of_bedrooms &&
+                                                    {/* Fallback to address if no other info */}
+                                                    {!(
+                                                        properties[0]
+                                                            ?.propertyType ||
+                                                        properties[0]
+                                                            ?.apartmentType
+                                                    ) &&
+                                                        !properties[0]
+                                                            ?.number_of_bedrooms &&
                                                         !properties[0]
                                                             ?.number_of_bath &&
                                                         !properties[0]?.location
