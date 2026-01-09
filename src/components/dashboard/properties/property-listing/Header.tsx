@@ -16,7 +16,7 @@ const Header = ({ propertyCount }: { propertyCount?: number }) => {
     const [selectedFilter, setSelectedFilter] = useState<{
         state?: string;
         propertyActive?: string;
-        apartmentType?: string;
+        propertyType?: string;
     }>();
     const [applyFilterKey, setApplyFilterKey] = useState<number>(0);
     const [localStorageChangeKey, setLocalStorageChangeKey] =

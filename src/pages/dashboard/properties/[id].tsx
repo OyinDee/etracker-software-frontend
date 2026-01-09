@@ -221,8 +221,7 @@ export default function PropertyDetails() {
             state: property?.location?.state,
         },
         year_built: property?.year_built,
-        apartmentType: property?.apartmentType,
-        propertyType: property?.propertyType,
+        propertyType: property?.propertyType || property?.apartmentType,
         landSize: property?.land_size,
         is_active: property?.is_active,
     });
@@ -247,7 +246,6 @@ export default function PropertyDetails() {
             setValue('description', property.description || '');
             setValue('city', property.location?.city || '');
             setValue('state', property.location?.state || '');
-            setValue('apartmentType', property.apartmentType || '');
             // Set propertyType with fallback to apartmentType for backwards compatibility
             setValue(
                 'propertyType',
@@ -273,7 +271,6 @@ export default function PropertyDetails() {
                     state: property?.location?.state,
                 },
                 year_built: property?.year_built,
-                apartmentType: property?.apartmentType,
                 propertyType: property?.propertyType || property?.apartmentType,
                 landSize: property?.land_size,
                 is_active: property?.is_active,
@@ -448,8 +445,7 @@ export default function PropertyDetails() {
                     state: property?.location?.state,
                 },
                 year_built: property?.year_built,
-                apartmentType: property?.apartmentType,
-                propertyType: property?.propertyType,
+                propertyType: property?.propertyType || property?.apartmentType,
                 landSize: property?.land_size,
                 is_active: property?.is_active,
             });
