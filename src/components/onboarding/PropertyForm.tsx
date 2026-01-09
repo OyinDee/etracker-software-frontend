@@ -203,24 +203,27 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
 
         // console.log('newProperty>>>>', newProperty);
 
+        // Handle backwards compatibility: map apartmentType to propertyType if needed
+        const finalPropertyType = data?.propertyType || data?.apartmentType;
+
         const requestObj: PropertySchema = {
             ...newProperty,
             name: data?.name,
             price: data?.price,
             number_of_bedrooms:
                 data?.numberOfRooms ||
-                (data?.propertyType === 'Land' ? 0 : data?.numberOfRooms),
+                (finalPropertyType === 'Land' ? 0 : data?.numberOfRooms),
             number_of_bath:
                 data?.numberOfBath ||
-                (data?.propertyType === 'Land' ? 0 : data?.numberOfBath),
+                (finalPropertyType === 'Land' ? 0 : data?.numberOfBath),
             address: data?.address,
             status: data?.status,
             description: data?.description,
             city: data?.city,
             state: data?.state,
-            propertyType: data?.propertyType,
+            propertyType: finalPropertyType,
             agreement_estimate: data?.agreementEstimate,
-            land_size: landedPropertyTypes.includes(data?.propertyType)
+            land_size: landedPropertyTypes.includes(finalPropertyType)
                 ? data?.landSize
                 : undefined,
             ...kycStage,
@@ -239,6 +242,11 @@ const PropertyForm: FC<PropertyProps> = ({ page }) => {
                     formData.append(key, JSON.stringify(value));
                 }
             }
+        }
+
+        // Ensure propertyType is always in FormData for backend validation
+        if (!formData.has('propertyType') && finalPropertyType) {
+            formData.append('propertyType', finalPropertyType);
         }
 
         // Validate the number of images

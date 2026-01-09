@@ -248,7 +248,11 @@ export default function PropertyDetails() {
             setValue('city', property.location?.city || '');
             setValue('state', property.location?.state || '');
             setValue('apartmentType', property.apartmentType || '');
-            setValue('propertyType', property.propertyType || '');
+            // Set propertyType with fallback to apartmentType for backwards compatibility
+            setValue(
+                'propertyType',
+                property.propertyType || property.apartmentType || ''
+            );
             setValue('year_built', property.year_built || '');
             setValue('is_active', property.is_active ?? true);
             if (property.land_size) {
@@ -270,6 +274,8 @@ export default function PropertyDetails() {
                 },
                 year_built: property?.year_built,
                 apartmentType: property?.apartmentType,
+                propertyType: property?.propertyType || property?.apartmentType,
+                landSize: property?.land_size,
                 is_active: property?.is_active,
             });
         }
@@ -370,8 +376,9 @@ export default function PropertyDetails() {
                 city: data.city,
                 state: data.state,
                 year_built: data.year_built,
-                apartmentType: data.apartmentType,
-                propertyType: data.propertyType,
+                // Use propertyType, but keep apartmentType for backwards compatibility
+                propertyType: data.propertyType || data.apartmentType,
+                apartmentType: data.propertyType || data.apartmentType, // Keep both in sync
                 land_size: landedPropertyTypes.includes(data.propertyType)
                     ? data.landSize
                     : undefined,
@@ -928,16 +935,10 @@ export default function PropertyDetails() {
                                     content={
                                         editable ? (
                                             <Select
-                                                value={
-                                                    formData?.propertyType ||
-                                                    formData?.apartmentType
-                                                }
-                                                onChange={(e) =>
-                                                    handleChange(
-                                                        'propertyType',
-                                                        e.target.value
-                                                    )
-                                                }
+                                                register={register(
+                                                    'propertyType'
+                                                )}
+                                                error={errors.propertyType}
                                                 selectDivClassName="bg-white"
                                             >
                                                 <option disabled value="">
