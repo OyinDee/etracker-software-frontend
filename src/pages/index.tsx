@@ -246,8 +246,11 @@ export default function Home() {
                                                             ?.apartmentType) ===
                                                         'Land' &&
                                                         properties[0]
-                                                            ?.land_size &&
-                                                        ` • ${properties[0].land_size.value} ${properties[0].land_size.unit}`}
+                                                            ?.land_size && (
+                                                            <>
+                                                                {` • ${properties[0].land_size.value} ${properties[0].land_size.unit}`}
+                                                            </>
+                                                        )}
                                                     {/* Show location */}
                                                     {properties[0]?.location
                                                         ?.city &&
@@ -265,6 +268,8 @@ export default function Home() {
                                                             ?.number_of_bedrooms &&
                                                         !properties[0]
                                                             ?.number_of_bath &&
+                                                        !properties[0]
+                                                            ?.land_size &&
                                                         !properties[0]?.location
                                                             ?.city &&
                                                         `${

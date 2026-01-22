@@ -4,14 +4,18 @@ import { SlHome } from 'react-icons/sl';
 import { useEffect, useState } from 'react';
 import { getAllGeneralProperties } from 'services/newServices/properties';
 import { Property } from 'interfaces';
+import nigerianStates from 'libs/nigerian-states.json';
 
 export default function PropertySearch() {
     const [propType, setPropType] = useState('rent');
-    const [bedRooms, setBedRooms] = useState(1);
+    const [bedRooms, setBedRooms] = useState<number | string>(1);
     const [city, setCity] = useState('');
     const [type, setType] = useState('');
     const [price, setPrice] = useState('');
     const [properties, setProperties] = useState<Property[]>([]);
+
+    // Get all Nigerian states for the dropdown
+    const allNigerianStates = Object.keys(nigerianStates);
 
     useEffect(() => {
         async function fetchData() {
@@ -20,29 +24,6 @@ export default function PropertySearch() {
         }
         fetchData();
     }, []);
-
-    function extractPropertyInfoFromArray(properties: any) {
-        if (properties) {
-            return properties.map(
-                (property: {
-                    number_of_bedrooms: any;
-                    location: any;
-                    apartmentType: any;
-                }) => {
-                    const { number_of_bedrooms, location, apartmentType } =
-                        property;
-                    const city = location.city;
-                    const state = location.state;
-
-                    return {
-                        number_of_bedrooms,
-                        location: `${city}`,
-                        apartmentType,
-                    };
-                }
-            );
-        }
-    }
 
     const parsePriceRange = (range: any) => {
         const [min, max] = range.split('-').map((value: string) => {
@@ -72,11 +53,20 @@ export default function PropertySearch() {
 
         const [minPrice, maxPrice] = parsePriceRange(price);
 
+        // Convert bedRooms to number for comparison, default to 1 if empty
+        const bedroomCount =
+            typeof bedRooms === 'string' && bedRooms === ''
+                ? 1
+                : Number(bedRooms);
+
         const filteredProperties = properties.filter((property: Property) => {
             const cityMatch =
                 !city ||
                 (property.location?.city &&
                     property.location.city.toLowerCase() ===
+                        city.toLowerCase()) ||
+                (property.location?.state &&
+                    property.location.state.toLowerCase() ===
                         city.toLowerCase());
             const typeMatch =
                 !type ||
@@ -110,8 +100,6 @@ export default function PropertySearch() {
 
         return filteredProperties;
     };
-
-    const extractedInfoArray = extractPropertyInfoFromArray(properties);
 
     return (
         <div className="relative z-10 mx-auto bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-100 p-8 w-[95%] md:w-[90%] lg:w-[85%] xl:w-[75%] 2xl:w-[65%] -mt-8">
@@ -160,10 +148,10 @@ export default function PropertySearch() {
                             onChange={(e) => setCity(e.target.value)}
                             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 hover:border-gray-300 appearance-none"
                         >
-                            <option value="">Select City</option>
-                            {extractedInfoArray?.map((state: any, i: any) => (
-                                <option key={i} value={state?.location}>
-                                    {state?.location}
+                            <option value="">Select State</option>
+                            {allNigerianStates?.map((state, i) => (
+                                <option key={i} value={state}>
+                                    {state}
                                 </option>
                             ))}
                         </select>
@@ -220,9 +208,17 @@ export default function PropertySearch() {
                             Bedrooms
                         </label>
                         <input
-                            onChange={(e) =>
-                                setBedRooms(parseInt(e.target.value) || 1)
-                            }
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === '') {
+                                    setBedRooms('');
+                                } else {
+                                    const numValue = parseInt(value);
+                                    if (!isNaN(numValue) && numValue >= 1) {
+                                        setBedRooms(numValue);
+                                    }
+                                }
+                            }}
                             value={bedRooms}
                             type="number"
                             min="1"

@@ -11,7 +11,7 @@ const PropertyListingCard: FC<PropertyListingProp> = ({ property }) => {
     return (
         property && (
             <div key={property?.id} className="h-full">
-                <Link href={`/dashboard/properties/${property?.id}`}>
+                <Link href={`/properties/${property?.id}`}>
                     <div className="bg-white box-border border border-gray-300 shadow-md rounded-md p-8 w-full h-full flex flex-col">
                         <div className="h-[270px] relative flex-shrink-0">
                             <Image
