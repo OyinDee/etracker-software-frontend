@@ -15,7 +15,9 @@ export const http = axios.create({
 
 http.interceptors.request.use(function (config) {
     const token = useBoundStore.getState().token;
-    config.headers['Authorization'] = `Bearer ${token}`;
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
     return config;
 });
 

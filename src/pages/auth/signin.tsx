@@ -51,7 +51,7 @@ function Signin() {
 
     const states = useAppStore();
     const router = useRouter();
-    const { tenantId, propertyId } = router.query;
+    const { tenantId, propertyId, returnUrl } = router.query;
     const { confirmTenant, isConfirmTenantLoading } = useLandlord();
 
     const {
@@ -194,6 +194,12 @@ function Signin() {
 
                 // Handle redirection based on KYC status
                 try {
+                    // Check if there's a returnUrl to redirect back to
+                    if (returnUrl && typeof returnUrl === 'string') {
+                        await router.push(returnUrl);
+                        return;
+                    }
+
                     if (!user.accountTypes || user.accountTypes.length === 0) {
                         toast.success(
                             'Please select your account type to continue'

@@ -10,6 +10,7 @@ import Loader from 'components/base/Loader';
 import Button from 'components/base/Button';
 import { ReactElement } from 'react';
 import toast from 'react-hot-toast';
+import { useAppStore } from 'hooks/useAppStore';
 
 export default function PropertyView() {
     const router = useRouter();
@@ -24,6 +25,7 @@ export default function PropertyView() {
         phone: '',
         message: '',
     });
+    const states = useAppStore();
 
     useEffect(() => {
         if (id) {
@@ -38,10 +40,20 @@ export default function PropertyView() {
                 id as string
             );
             setProperty(response.data.data);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error fetching property:', error);
-            toast.error('Property not found');
-            router.push('/');
+
+            // Check if it's an authentication error
+            if (error?.response?.status === 401) {
+                toast.error('Please login to view this property');
+                router.push(`/auth/signin?returnUrl=/properties/${id}`);
+            } else if (error?.response?.status === 404) {
+                toast.error('Property not found');
+                router.push('/');
+            } else {
+                toast.error('Unable to load property. Please try again.');
+                router.push('/');
+            }
         } finally {
             setLoading(false);
         }
@@ -452,6 +464,65 @@ export default function PropertyView() {
 
                     {/* Contact Sidebar */}
                     <div className="lg:col-span-1">
+                        {/* Login Banner for Unauthenticated Users */}
+                        {!states?.token && (
+                            <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="bg-gradient-to-r from-primary-50 to-blue-50 border-l-4 border-primary-500 rounded-2xl shadow-lg p-6 mb-6"
+                            >
+                                <div className="flex items-start">
+                                    <div className="flex-shrink-0">
+                                        <svg
+                                            className="w-6 h-6 text-primary-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                        </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                        <h3 className="text-sm font-medium text-primary-800">
+                                            Login Required
+                                        </h3>
+                                        <p className="mt-1 text-sm text-primary-700">
+                                            Please login to view complete
+                                            property details and contact the
+                                            owner.
+                                        </p>
+                                        <div className="mt-4">
+                                            <Link
+                                                href={`/auth/signin?returnUrl=/properties/${id}`}
+                                                className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+                                            >
+                                                Login Now
+                                                <svg
+                                                    className="w-4 h-4 ml-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M9 5l7 7-7 7"
+                                                    />
+                                                </svg>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -465,8 +536,19 @@ export default function PropertyView() {
                             {!showContactForm ? (
                                 <div className="space-y-4">
                                     <button
-                                        onClick={() => setShowContactForm(true)}
-                                        className="w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center"
+                                        onClick={() =>
+                                            states?.token
+                                                ? setShowContactForm(true)
+                                                : router.push(
+                                                      `/auth/signin?returnUrl=/properties/${id}`
+                                                  )
+                                        }
+                                        className={`w-full font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center ${
+                                            states?.token
+                                                ? 'bg-primary-600 hover:bg-primary-700 text-white'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                        disabled={!states?.token}
                                     >
                                         <svg
                                             className="w-5 h-5 mr-2"
@@ -481,10 +563,26 @@ export default function PropertyView() {
                                                 d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
                                             />
                                         </svg>
-                                        Send Message
+                                        {states?.token
+                                            ? 'Send Message'
+                                            : 'Login to Message'}
                                     </button>
 
-                                    <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center">
+                                    <button
+                                        onClick={() =>
+                                            states?.token
+                                                ? null
+                                                : router.push(
+                                                      `/auth/signin?returnUrl=/properties/${id}`
+                                                  )
+                                        }
+                                        className={`w-full font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center ${
+                                            states?.token
+                                                ? 'bg-green-600 hover:bg-green-700 text-white'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                        disabled={!states?.token}
+                                    >
                                         <svg
                                             className="w-5 h-5 mr-2"
                                             fill="none"
@@ -498,10 +596,26 @@ export default function PropertyView() {
                                                 d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                                             />
                                         </svg>
-                                        Call Now
+                                        {states?.token
+                                            ? 'Call Now'
+                                            : 'Login to Call'}
                                     </button>
 
-                                    <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center">
+                                    <button
+                                        onClick={() =>
+                                            states?.token
+                                                ? null
+                                                : router.push(
+                                                      `/auth/signin?returnUrl=/properties/${id}`
+                                                  )
+                                        }
+                                        className={`w-full font-semibold py-4 px-6 rounded-xl transition-colors flex items-center justify-center ${
+                                            states?.token
+                                                ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
+                                        disabled={!states?.token}
+                                    >
                                         <svg
                                             className="w-5 h-5 mr-2"
                                             fill="none"
@@ -515,10 +629,12 @@ export default function PropertyView() {
                                                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                                             />
                                         </svg>
-                                        WhatsApp
+                                        {states?.token
+                                            ? 'WhatsApp'
+                                            : 'Login for WhatsApp'}
                                     </button>
                                 </div>
-                            ) : (
+                            ) : states?.token ? (
                                 <form
                                     onSubmit={handleContactSubmit}
                                     className="space-y-4"
@@ -600,6 +716,19 @@ export default function PropertyView() {
                                         </button>
                                     </div>
                                 </form>
+                            ) : (
+                                <div className="text-center p-6">
+                                    <p className="text-gray-600 mb-4">
+                                        Please login to contact the property
+                                        owner
+                                    </p>
+                                    <Link
+                                        href={`/auth/signin?returnUrl=/properties/${id}`}
+                                        className="inline-flex items-center px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700 transition-colors"
+                                    >
+                                        Login to Contact
+                                    </Link>
+                                </div>
                             )}
 
                             {/* Property Info Summary */}
